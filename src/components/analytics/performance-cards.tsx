@@ -16,8 +16,8 @@ export function PerformanceCards() {
 
   useEffect(() => {
     fetch("/api/team/performance").then(res => res.json())
-      .then((stats) => {
-        const repStats = stats.map((stat) => ({
+      .then((stats: any[]) => {
+        const repStats = stats.map((stat: any) => ({
           name: stat.member.name,
           total: stat.assignedLeads,
           avgScore: 0, // Will need to calculate from leads
