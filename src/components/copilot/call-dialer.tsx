@@ -71,12 +71,40 @@ export function CallDialer({ lead, onCallEnd, onClose }: CallDialerProps) {
 
       const data = await response.json();
 
-      // Simulate call progression
-      setTimeout(() => setCallStatus("ringing"), 1000);
-      setTimeout(() => {
-        setCallStatus("connected");
-        setCallStartTime(Date.now());
-      }, 3000);
+      if (data.demo_mode) {
+        // Only simulate if explicitly in demo mode
+        setTimeout(() => setCallStatus("ringing"), 1000);
+        setTimeout(() => {
+          setCallStatus("connected");
+          setCallStartTime(Date.now());
+        }, 3000);
+      } else {
+        // Real Twilio call - status will be updated via webhooks
+        setCallStatus("ringing");
+        console.log("[Real Call] Initiated Twilio call:", data.call_sid);
+
+        // Poll for call status updates
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusRes = await fetch(`/api/calls/status?call_id=${data.call_id}`);
+            const statusData = await statusRes.json();
+
+            if (statusData.status === "in-progress" || statusData.status === "answered") {
+              setCallStatus("connected");
+              setCallStartTime(Date.now());
+              clearInterval(pollInterval);
+            } else if (statusData.status === "completed" || statusData.status === "failed") {
+              setCallStatus("ended");
+              clearInterval(pollInterval);
+            }
+          } catch (error) {
+            console.error("Failed to poll call status:", error);
+          }
+        }, 2000);
+
+        // Cleanup polling after 30 seconds
+        setTimeout(() => clearInterval(pollInterval), 30000);
+      }
 
     } catch (error) {
       console.error("Call initiation error:", error);

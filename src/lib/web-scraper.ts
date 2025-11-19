@@ -81,7 +81,7 @@ Extract and return JSON with:
 }`;
 
           const message = await anthropic.messages.create({
-            model: 'claude-3-opus-20240229',
+            model: 'claude-sonnet-4-5-20250929',
             max_tokens: 512,
             messages: [{ role: 'user', content: prompt }],
           });

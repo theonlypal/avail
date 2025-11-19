@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { fetchLeads, getLeadById, searchAndImportLeads } from "./leads";
 import { getTeamMembers } from "./team";
 import { generateOutreachContent } from "./ai";

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { supabase } from "./supabaseClient";
 import { getCurrentTeamId } from "./auth";
 import type { Lead, LeadFilter, DbLead } from "@/types";

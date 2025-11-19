@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { Bell, Download } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { getCurrentTeam } from "@/lib/team";
-import { fetchLeads } from "@/lib/leads";
 import type { Team, Lead } from "@/types";
 
 export function TopBar() {
@@ -13,7 +11,10 @@ export function TopBar() {
   const [leads, setLeads] = useState<Lead[]>([]);
 
   useEffect(() => {
-    Promise.all([getCurrentTeam(), fetchLeads()])
+    Promise.all([
+      fetch('/api/team').then(res => res.json()),
+      fetch('/api/leads').then(res => res.json())
+    ])
       .then(([teamData, leadsData]) => {
         setTeam(teamData);
         setLeads(leadsData);

@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { getTeamMembers } from "@/lib/team";
+import { ImmersiveCallScreen } from "@/components/copilot/immersive-call-screen";
 
 type Props = {
   leads: Lead[];
@@ -24,10 +24,21 @@ type Props = {
 export function LeadTable({ leads }: Props) {
   const [sending, setSending] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [callingLead, setCallingLead] = useState<Lead | null>(null);
 
   useEffect(() => {
-    getTeamMembers().then(setTeamMembers).catch(console.error);
+    fetch("/api/team/members").then(res => res.json()).then(setTeamMembers).catch(console.error);
   }, []);
+
+  const handleStartCall = (lead: Lead) => {
+    if (!lead.phone) {
+      toast.error("No phone number available", {
+        description: `${lead.business_name} doesn't have a phone number on file.`,
+      });
+      return;
+    }
+    setCallingLead(lead);
+  };
 
   const handleOutreach = async (lead: Lead) => {
     setSending(lead.id);
@@ -253,14 +264,28 @@ export function LeadTable({ leads }: Props) {
                 {/* Actions Column */}
                 <TableCell className="text-right py-4">
                   <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10"
-                      onClick={() => handlePushToCrm(lead)}
-                    >
-                      <Share className="h-4 w-4" />
-                    </Button>
+                    {/* CALL BUTTON - Primary Action */}
+                    {lead.phone ? (
+                      <Button
+                        size="sm"
+                        className="h-9 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg shadow-green-500/20"
+                        onClick={() => handleStartCall(lead)}
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        Call
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 border-slate-600 text-slate-500 cursor-not-allowed"
+                        disabled
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        No Phone
+                      </Button>
+                    )}
+
                     <Button
                       variant="ghost"
                       size="icon"
@@ -290,6 +315,20 @@ export function LeadTable({ leads }: Props) {
           })}
         </TableBody>
       </Table>
+
+      {/* Immersive Call Screen */}
+      {callingLead && (
+        <ImmersiveCallScreen
+          lead={callingLead}
+          onCallEnd={(callData) => {
+            toast.success("Call completed", {
+              description: `Call with ${callingLead.business_name} lasted ${Math.floor(callData.duration / 60)}m ${callData.duration % 60}s`,
+            });
+            setCallingLead(null);
+          }}
+          onClose={() => setCallingLead(null)}
+        />
+      )}
     </div>
   );
 }

@@ -23,7 +23,7 @@ interface HealthResponse {
 
 export async function GET(): Promise<NextResponse<HealthResponse>> {
   const timestamp = new Date().toISOString();
-  const model = 'claude-3-opus-20240229';
+  const model = 'claude-sonnet-4-5-20250929';
 
   // Check if API key is configured
   const apiKey = process.env.ANTHROPIC_API_KEY;

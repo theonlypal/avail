@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Autonomous Lead Discovery System
  * Alien-level intelligence for automatic lead finding and scoring

@@ -291,7 +291,7 @@ Think step-by-step and use tools strategically.`,
 
     try {
       const response = await anthropic.messages.create({
-        model: 'claude-3-opus-20240229',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 4096,
         tools: AVAILABLE_TOOLS,
         messages,

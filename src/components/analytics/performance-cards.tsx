@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getTeamPerformance } from "@/lib/team";
 
 type RepStats = {
   name: string;
@@ -16,7 +15,7 @@ export function PerformanceCards() {
   const [reps, setReps] = useState<RepStats[]>([]);
 
   useEffect(() => {
-    getTeamPerformance()
+    fetch("/api/team/performance").then(res => res.json())
       .then((stats) => {
         const repStats = stats.map((stat) => ({
           name: stat.member.name,

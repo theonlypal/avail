@@ -8,8 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, XCircle, AlertCircle } from "lucide-react";
-import { getTeamMembers } from "@/lib/team";
-import { getIndustryBreakdown } from "@/lib/leads";
 
 type Props = {
   onChange: (filter: LeadFilter) => void;
@@ -21,8 +19,8 @@ export function LeadFilters({ onChange }: Props) {
 
   useEffect(() => {
     Promise.all([
-      getIndustryBreakdown().then(breakdown => Object.keys(breakdown)),
-      getTeamMembers()
+      fetch('/api/leads/stats/industries').then(res => res.json()).then(breakdown => Object.keys(breakdown)),
+      fetch('/api/team/members').then(res => res.json())
     ]).then(([industryList, members]) => {
       setIndustries(industryList);
       setTeamMembers(members);

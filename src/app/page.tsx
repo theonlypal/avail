@@ -33,10 +33,10 @@ const aiServices = [
     icon: Zap,
     features: ["Proprietary AI", "24/7 lead capture", "Smart qualification", "Auto-scheduling"],
     color: "from-yellow-500/20 to-orange-500/20",
-    demo: "/demos/website",
+    demo: "/dashboard",
     highlight: true,
-    inDevelopment: true,
-    developmentNote: "In Development - Waiting for API keys and final configuration"
+    inDevelopment: false,
+    developmentNote: ""
   },
   {
     title: "AI Lead Generation",

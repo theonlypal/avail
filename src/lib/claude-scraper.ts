@@ -95,7 +95,7 @@ Focus on businesses that match the filters. Be realistic with ratings and review
 
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-3-opus-20240229',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 4096,
       messages: [
         {

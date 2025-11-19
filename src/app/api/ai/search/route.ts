@@ -1,14 +1,13 @@
 /**
  * AI-Powered Lead Search Engine
- * Uses Claude AI + Web Search to find businesses based on natural language queries
+ * Uses Claude Sonnet 4.5 + Serper API for REAL lead discovery
+ * NO DEMOS - Only real API calls
  */
 
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { getDb, getDefaultTeamId } from '@/lib/db';
-import { searchBusinesses as searchWithScraper } from '@/lib/web-scraper';
-import { searchBusinessesWithClaude } from '@/lib/claude-scraper';
-import { orchestrateSearch } from '@/lib/ai-orchestrator';
+import { discoverLeads } from '@/lib/ai-lead-discovery';
+import { getDb } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Allow up to 60 seconds for complex searches
@@ -32,7 +31,7 @@ interface ParsedQuery {
 }
 
 /**
- * Parse natural language query using Claude AI
+ * Parse natural language query using Claude Sonnet 4.5
  */
 async function parseSearchQuery(query: string): Promise<ParsedQuery> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -56,7 +55,7 @@ Extract:
    - Website status (e.g., "no website", "without website")
    - Review count requirements
 
-Respond in JSON format:
+Respond ONLY with valid JSON in this exact format:
 {
   "industry": "string or null",
   "location": "city, state or null",
@@ -72,7 +71,7 @@ Respond in JSON format:
 }`;
 
   const message = await anthropic.messages.create({
-    model: 'claude-3-opus-20240229',
+    model: 'claude-sonnet-4-5-20250929',
     max_tokens: 1024,
     messages: [
       {
@@ -87,178 +86,66 @@ Respond in JSON format:
     throw new Error('Unexpected response format from Claude');
   }
 
-  // Extract JSON from response
-  const jsonMatch = content.text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error('Failed to parse query');
+  // Strip markdown code blocks if present
+  let jsonText = content.text.trim();
+  if (jsonText.startsWith('```json')) {
+    jsonText = jsonText.substring(7);
+  } else if (jsonText.startsWith('```')) {
+    jsonText = jsonText.substring(3);
   }
+  if (jsonText.endsWith('```')) {
+    jsonText = jsonText.substring(0, jsonText.length - 3);
+  }
+  jsonText = jsonText.trim();
 
-  return JSON.parse(jsonMatch[0]);
+  return JSON.parse(jsonText);
 }
 
 /**
- * Search for businesses using AI orchestrator
- * The orchestrator intelligently decides which tools to use
+ * Search for businesses using REAL AI-powered discovery
+ * Uses Serper API + Claude Sonnet 4.5
  */
 async function searchBusinesses(parsedQuery: ParsedQuery): Promise<any[]> {
   const industry = parsedQuery.industry || 'business';
   const location = parsedQuery.location || 'San Diego, CA';
   const limit = parsedQuery.limit || 20;
 
-  console.log('🔍 Starting AI-orchestrated business search:', { industry, location, limit });
+  console.log('[AI Search] Starting REAL lead discovery:', { industry, location, limit });
 
   try {
-    // Build a natural language query for the orchestrator
-    const userQuery = buildOrchestratorQuery(parsedQuery, industry, location, limit);
-
-    console.log('🤖 Using AI Orchestrator with query:', userQuery);
-
-    // Let the AI orchestrator decide which tools to use
-    const result = await orchestrateSearch(userQuery, {
-      maxIterations: 5,
-      enableEmailEnrichment: true,
-      enableWebsiteAnalysis: false,
+    // Use our TESTED lead discovery system
+    const result = await discoverLeads({
+      industry,
+      location,
+      maxResults: limit,
+      minRating: parsedQuery.filters?.minRating,
     });
 
-    console.log(`✅ Orchestrator found ${result.businesses.length} businesses`);
-    console.log(`🔧 Tools used: ${result.tools_used.join(', ')}`);
-    console.log(`💭 Reasoning: ${result.reasoning}`);
+    console.log(`[AI Search] Found ${result.leads.length} real leads`);
 
-    return result.businesses;
+    // Convert discovered leads to the format expected by the API
+    return result.leads.map(lead => ({
+      name: lead.name,
+      industry: lead.industry,
+      location: `${lead.city}, ${lead.state}`,
+      address: lead.address,
+      phone: lead.phone,
+      email: lead.email,
+      website: lead.website,
+      rating: lead.rating,
+      reviewCount: lead.reviewCount,
+      opportunityScore: lead.opportunityScore,
+      painPoints: lead.painPoints,
+      lat: null,
+      lng: null,
+    }));
 
   } catch (error) {
-    console.error('AI orchestrator error:', error);
-
-    // Fallback: Try direct Claude AI search
-    try {
-      console.log('🔄 Falling back to direct Claude AI search...');
-      const businesses = await searchBusinessesWithClaude({
-        industry,
-        location,
-        limit,
-        filters: parsedQuery.filters,
-      });
-
-      if (businesses.length > 0) {
-        console.log(`✅ Found ${businesses.length} businesses using Claude AI fallback`);
-        return businesses;
-      }
-    } catch (fallbackError) {
-      console.error('Claude AI fallback error:', fallbackError);
-    }
-
-    // No results found from any source
-    console.log('❌ No real business data found from any source');
-    return [];
+    console.error('[AI Search] Discovery error:', error);
+    throw error;
   }
 }
 
-/**
- * Build a natural language query for the AI orchestrator
- */
-function buildOrchestratorQuery(parsedQuery: ParsedQuery, industry: string, location: string, limit: number): string {
-  let query = `Find ${limit} ${industry} businesses in ${location}`;
-
-  if (parsedQuery.filters) {
-    const filters = [];
-
-    if (parsedQuery.filters.maxRating) {
-      filters.push(`with ratings below ${parsedQuery.filters.maxRating} stars`);
-    }
-    if (parsedQuery.filters.minRating) {
-      filters.push(`with ratings above ${parsedQuery.filters.minRating} stars`);
-    }
-    if (parsedQuery.filters.hasWebsite === false) {
-      filters.push(`without websites`);
-    }
-    if (parsedQuery.filters.minReviews) {
-      filters.push(`with at least ${parsedQuery.filters.minReviews} reviews`);
-    }
-    if (parsedQuery.filters.maxReviews) {
-      filters.push(`with no more than ${parsedQuery.filters.maxReviews} reviews`);
-    }
-
-    if (filters.length > 0) {
-      query += ' ' + filters.join(' and ');
-    }
-  }
-
-  query += '. For each business, find: name, address, phone, website, email, rating, and review count. Use multiple search sources for best coverage.';
-
-  return query;
-}
-
-/**
- * Calculate opportunity score for a business
- */
-function calculateOpportunityScore(business: any): number {
-  let score = 50;
-
-  // Rating-based scoring
-  if (business.rating < 4.0) score += 20;
-  else if (business.rating < 4.5) score += 15;
-  else if (business.rating < 4.7) score += 10;
-
-  // Review count scoring
-  if (business.reviewCount < 50) score += 20;
-  else if (business.reviewCount < 100) score += 15;
-  else if (business.reviewCount > 200) score += 10;
-
-  // Website scoring
-  if (!business.website) score += 15;
-
-  return Math.min(score, 95);
-}
-
-/**
- * Generate pain points based on business data
- */
-function generatePainPoints(business: any): string[] {
-  const painPoints: string[] = [];
-
-  if (!business.website) {
-    painPoints.push('No dedicated website - missing online presence');
-  }
-
-  if (business.rating < 4.0) {
-    painPoints.push('Low online ratings need reputation management');
-  } else if (business.rating < 4.5) {
-    painPoints.push('Average ratings with room for improvement');
-  }
-
-  if (business.reviewCount < 50) {
-    painPoints.push('Limited online reviews - need more customer engagement');
-  }
-
-  if (business.industry) {
-    painPoints.push('Could benefit from digital transformation');
-  }
-
-  return painPoints.slice(0, 4);
-}
-
-/**
- * Generate recommended services
- */
-function generateRecommendedServices(business: any): string[] {
-  const services: string[] = [];
-
-  if (!business.website) {
-    services.push('Website Development');
-  }
-
-  if (business.rating < 4.5) {
-    services.push('Review Management & Reputation Building');
-  }
-
-  if (business.reviewCount < 100) {
-    services.push('Local SEO & Digital Marketing');
-  }
-
-  services.push('AI Chat Widget & Lead Capture');
-
-  return services.slice(0, 4);
-}
 
 /**
  * POST /api/ai/search - AI-powered business search
@@ -286,64 +173,67 @@ export async function POST(request: Request) {
 
     console.log(`🔍 Processing ${businesses.length} businesses`);
 
-    // Step 3: Process and score businesses
+    // Step 3: Save leads to database
     const db = getDb();
-    const teamId = getDefaultTeamId();
+
+    // Get or create team
+    let team = db.prepare("SELECT id FROM teams LIMIT 1").get() as { id: string } | undefined;
+    if (!team) {
+      const teamId = crypto.randomUUID();
+      db.prepare(
+        `INSERT INTO teams (id, team_name, created_at, updated_at)
+         VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+      ).run(teamId, "Sales Team");
+      team = { id: teamId };
+    }
 
     let leadsAdded = 0;
 
-    const stmt = db.prepare(`
-      INSERT OR IGNORE INTO leads (
-        id, team_id, business_name, industry, location,
-        phone, email, website, rating, review_count,
-        website_score, social_presence, ad_presence,
-        opportunity_score, pain_points, recommended_services,
-        ai_summary, lat, lng, source, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
     for (const business of businesses) {
-      const opportunityScore = calculateOpportunityScore(business);
-      const painPoints = generatePainPoints(business);
-      const recommendedServices = generateRecommendedServices(business);
-
-      const location = business.location || business.address || parsedQuery.location || 'Unknown';
-      const industry = business.industry || parsedQuery.industry || 'Business';
-
-      const aiSummary = `${business.name} is a ${industry} business in ${location} with ${(business.rating || 0).toFixed(1)} stars from ${business.reviewCount || business.reviews || 0} reviews. ${
-        painPoints.length > 0 ? `Key opportunity: ${painPoints[0]}` : 'Growth potential identified.'
-      }`;
-
       try {
-        const id = `lead-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        // Check for duplicates
+        const existing = business.phone
+          ? db.prepare("SELECT id FROM leads WHERE phone = ?").get(business.phone)
+          : db.prepare("SELECT id FROM leads WHERE business_name = ? AND location LIKE ?")
+              .get(business.name, `%${business.location}%`);
 
-        stmt.run(
-          id,
-          teamId,
+        if (existing) {
+          console.log(`[AI Search] Skipping duplicate: ${business.name}`);
+          continue;
+        }
+
+        // Insert lead
+        const leadId = crypto.randomUUID();
+        const now = new Date().toISOString();
+
+        db.prepare(
+          `INSERT INTO leads (
+            id, team_id, business_name, industry, location, phone, email, website,
+            rating, review_count, opportunity_score, pain_points,
+            source, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(
+          leadId,
+          team.id,
           business.name,
-          industry,
-          location,
-          business.phone || null,
-          business.email || null,
-          business.website || null,
-          business.rating || null,
-          business.reviewCount || business.reviews || null,
-          business.website ? 70 : 0,
-          null,
-          0,
-          opportunityScore,
-          JSON.stringify(painPoints),
-          JSON.stringify(recommendedServices),
-          aiSummary,
-          business.lat || null,
-          business.lng || null,
+          business.industry,
+          business.location,
+          business.phone,
+          business.email,
+          business.website,
+          business.rating || 0,
+          business.reviewCount || 0,
+          business.opportunityScore,
+          JSON.stringify(business.painPoints),
           'ai_search',
-          new Date().toISOString()
+          now,
+          now
         );
 
         leadsAdded++;
+        console.log(`[AI Search] ✓ Added: ${business.name}`);
       } catch (error) {
-        console.error(`Failed to insert ${business.name}:`, error);
+        console.error(`[AI Search] Failed to insert ${business.name}:`, error);
       }
     }
 

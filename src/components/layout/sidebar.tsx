@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { Map, MessagesSquare, Users, LayoutDashboard, Sparkles, Home, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { getCurrentTeam } from "@/lib/team";
 import type { Team } from "@/types";
 
 const routes = [
@@ -23,7 +22,10 @@ export function Sidebar() {
   const [team, setTeam] = useState<Team | null>(null);
 
   useEffect(() => {
-    getCurrentTeam().then(setTeam).catch(console.error);
+    fetch('/api/team')
+      .then(res => res.json())
+      .then(setTeam)
+      .catch(console.error);
   }, []);
 
   return (
