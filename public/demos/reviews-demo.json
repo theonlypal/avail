@@ -1,0 +1,146 @@
+{
+  "id": "reviews",
+  "title": "AvAIL Reviews Management",
+  "subtitle": "AI Review Responses & Reputation",
+  "description": "Auto-respond to Google & Yelp reviews with AI, sentiment analysis, and review generation",
+  "icon": "⭐",
+  "color": "yellow",
+  "scenario": {
+    "businessName": "Sunset Pool Service",
+    "businessType": "Pool Cleaning & Maintenance",
+    "problem": "Only responding to 10% of reviews, 4.2-star rating hurting bookings",
+    "solution": "AvAIL AI review management with automated responses and review requests"
+  },
+  "demoData": {
+    "reviews": [
+      {
+        "id": 1,
+        "platform": "Google",
+        "rating": 5,
+        "author": "Jennifer Martinez",
+        "date": "2 days ago",
+        "text": "Sunset Pool Service is amazing! They transformed our green swamp into a crystal-clear oasis. David was professional, on-time, and really knew his stuff. Highly recommend!",
+        "sentiment": "positive",
+        "aiResponse": "Thank you so much, Jennifer! 🌟 We're thrilled we could help transform your pool. David will be happy to hear your kind words! We appreciate your trust in Sunset Pool Service and look forward to keeping your pool sparkling all season.",
+        "responseTime": "2 hours",
+        "responded": true
+      },
+      {
+        "id": 2,
+        "platform": "Yelp",
+        "rating": 4,
+        "author": "Mike Thompson",
+        "date": "3 days ago",
+        "text": "Good service overall. They fixed my pump issue quickly. Only complaint is they were 20 minutes late, but the technician called ahead to let me know.",
+        "sentiment": "positive",
+        "aiResponse": "Thanks for the feedback, Mike! We're glad we could resolve your pump issue quickly. We apologize for the delay—punctuality is important to us. We've noted this and are working on improving our scheduling. We appreciate your understanding and your business! 💙",
+        "responseTime": "1.5 hours",
+        "responded": true
+      },
+      {
+        "id": 3,
+        "platform": "Google",
+        "rating": 2,
+        "author": "Robert Anderson",
+        "date": "5 days ago",
+        "text": "Not happy with the service. Pool is still cloudy after treatment and I feel like I overpaid. Expected better results for $180.",
+        "sentiment": "negative",
+        "aiResponse": "Hi Robert, we're truly sorry to hear about your experience. This isn't the standard we hold ourselves to. Pool chemistry can sometimes take 24-48 hours to fully balance, but we'd love to make this right. Our manager will reach out to you directly within the next hour to schedule a complimentary follow-up visit. We value your business and want to ensure you're completely satisfied.",
+        "responseTime": "45 minutes",
+        "responded": true,
+        "escalated": true,
+        "followUpScheduled": true
+      },
+      {
+        "id": 4,
+        "platform": "Google",
+        "rating": 5,
+        "author": "Lisa Chen",
+        "date": "1 week ago",
+        "text": "Best pool service in town! Been using Sunset for 3 years and they never disappoint. Reliable, affordable, and my pool always looks perfect.",
+        "sentiment": "positive",
+        "aiResponse": "Lisa, you just made our day! 🎉 Thank you for being a loyal customer for 3 years. It's clients like you who make our work so rewarding. Here's to many more years of crystal-clear pools together!",
+        "responseTime": "3 hours",
+        "responded": true
+      },
+      {
+        "id": 5,
+        "platform": "Yelp",
+        "rating": 3,
+        "author": "Tom Williams",
+        "date": "1 week ago",
+        "text": "Decent service but wish they offered weekend appointments. Hard to schedule when I work 9-5.",
+        "sentiment": "neutral",
+        "aiResponse": "Thanks for the feedback, Tom! We hear you on weekend availability. We're actually expanding our schedule next month to include Saturday appointments. We'll reach out to let you know when that's available. Thanks for your patience!",
+        "responseTime": "2 hours",
+        "responded": true
+      }
+    ],
+    "reviewRequests": [
+      {
+        "customer": "Sarah Johnson",
+        "service": "Weekly Maintenance",
+        "completedDate": "Yesterday",
+        "requestSent": "2 hours after service",
+        "method": "SMS + Email",
+        "status": "Pending"
+      },
+      {
+        "customer": "Mark Davis",
+        "service": "Green Pool Recovery",
+        "completedDate": "2 days ago",
+        "requestSent": "1 day after service",
+        "method": "SMS",
+        "status": "Completed - 5 stars on Google"
+      }
+    ],
+    "sentimentAnalysis": {
+      "overall": "Very Positive",
+      "positivePercentage": 78,
+      "neutralPercentage": 14,
+      "negativePercentage": 8,
+      "commonPraise": ["Professional", "Reliable", "Great results", "On-time"],
+      "commonComplaints": ["Scheduling", "Pricing", "Response time"]
+    },
+    "reputationScore": {
+      "current": 4.8,
+      "trend": "+0.6 in 3 months",
+      "googleRating": 4.8,
+      "yelpRating": 4.7,
+      "totalReviews": 47,
+      "responseRate": "100%"
+    }
+  },
+  "metrics": {
+    "before": {
+      "responseRate": "10%",
+      "avgRating": "4.2 stars",
+      "totalReviews": "12",
+      "negativeReviewResolution": "Rarely addressed",
+      "reputationScore": "68/100"
+    },
+    "after": {
+      "responseRate": "100%",
+      "avgRating": "4.8 stars",
+      "totalReviews": "47",
+      "negativeReviewResolution": "100% within 1 hour",
+      "reputationScore": "94/100"
+    },
+    "savings": {
+      "newCustomersFromReviews": "+35%",
+      "reviewVolume": "3.9x increase",
+      "avgResponseTime": "< 2 hours",
+      "reputationScoreIncrease": "+26 points"
+    }
+  },
+  "features": [
+    "AI-generated review responses",
+    "Multi-platform monitoring (Google, Yelp, Facebook)",
+    "Sentiment analysis & alerts",
+    "Automated review requests",
+    "Negative review escalation",
+    "Response template library",
+    "Reputation score tracking",
+    "Competitor benchmarking"
+  ]
+}

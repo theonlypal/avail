@@ -1,0 +1,124 @@
+{
+  "id": "website",
+  "title": "AvAIL Website",
+  "subtitle": "AI Chat Widget & Lead Capture",
+  "description": "Smart website with AI chat assistant, intake forms, and instant lead qualification",
+  "icon": "💬",
+  "color": "green",
+  "scenario": {
+    "businessName": "ProPlumb Services",
+    "businessType": "Plumbing & HVAC",
+    "problem": "Missing 60% of after-hours leads, 4-hour response time losing jobs",
+    "solution": "AvAIL AI Chat Widget with 24/7 lead capture and instant qualification"
+  },
+  "demoData": {
+    "chatConversation": [
+      {
+        "role": "visitor",
+        "message": "Hi, I have a water heater emergency!",
+        "timestamp": "10:45 PM"
+      },
+      {
+        "role": "ai",
+        "message": "I'm sorry to hear that! I'm here to help right away. Is your water heater leaking or not producing hot water?",
+        "timestamp": "10:45 PM",
+        "delay": 500
+      },
+      {
+        "role": "visitor",
+        "message": "It's leaking badly and flooding the basement",
+        "timestamp": "10:46 PM"
+      },
+      {
+        "role": "ai",
+        "message": "That sounds urgent! I'll get you emergency help immediately. Can you provide your address so I can check our service area and dispatch time?",
+        "timestamp": "10:46 PM",
+        "delay": 800
+      },
+      {
+        "role": "visitor",
+        "message": "456 Elm Street, Denver CO",
+        "timestamp": "10:46 PM"
+      },
+      {
+        "role": "ai",
+        "message": "Perfect! We can have a technician there within 45 minutes. What's the best phone number to reach you?",
+        "timestamp": "10:47 PM",
+        "delay": 700
+      },
+      {
+        "role": "visitor",
+        "message": "(555) 123-4567",
+        "timestamp": "10:47 PM"
+      },
+      {
+        "role": "ai",
+        "message": "Got it! Emergency service dispatched. Mike will arrive within 45 minutes at 456 Elm Street. He'll call you at (555) 123-4567 when he's 10 minutes away. Emergency rate is $150 service call + parts/labor. Does that work?",
+        "timestamp": "10:47 PM",
+        "delay": 1000
+      },
+      {
+        "role": "visitor",
+        "message": "Yes, thank you!",
+        "timestamp": "10:48 PM"
+      },
+      {
+        "role": "ai",
+        "message": "You're all set! ✓ Lead created in CRM, Mike notified, confirmation SMS sent. In the meantime, please shut off the main water valve if possible. Help is on the way!",
+        "timestamp": "10:48 PM",
+        "delay": 600
+      }
+    ],
+    "leadQualification": {
+      "name": "Visitor #4892",
+      "urgency": "Emergency",
+      "score": 95,
+      "value": "$500-1000",
+      "address": "456 Elm Street, Denver CO",
+      "phone": "(555) 123-4567",
+      "issue": "Water heater leak + flooding",
+      "timeOfContact": "10:45 PM (After Hours)",
+      "disposition": "Dispatched - 45min ETA"
+    },
+    "intakeFormData": {
+      "serviceType": "Emergency Plumbing",
+      "propertyType": "Single Family Home",
+      "issueCategory": "Water Heater",
+      "urgency": "Emergency",
+      "preferredContact": "Phone",
+      "bestTimeToCall": "ASAP"
+    }
+  },
+  "metrics": {
+    "before": {
+      "conversionRate": "5%",
+      "afterHoursLeads": "0/month",
+      "responseTime": "4 hours avg",
+      "leadsPerMonth": "40",
+      "missedOpportunities": "60%"
+    },
+    "after": {
+      "conversionRate": "25%",
+      "afterHoursLeads": "20/month",
+      "responseTime": "Instant",
+      "leadsPerMonth": "100",
+      "missedOpportunities": "5%"
+    },
+    "savings": {
+      "monthly": "$6,000 additional revenue",
+      "conversionIncrease": "5x",
+      "afterHoursCapture": "+20 leads/month",
+      "avgJobValue": "$300"
+    }
+  },
+  "features": [
+    "AI chat widget with 24/7 availability",
+    "Smart intake forms with auto-population",
+    "Instant lead qualification & scoring",
+    "Automatic CRM integration",
+    "Emergency dispatch capability",
+    "Multi-language support",
+    "Mobile-responsive design",
+    "Sentiment analysis for urgent issues"
+  ]
+}

@@ -1,0 +1,219 @@
+{
+  "id": "ads",
+  "title": "AvAIL Ads & SEO",
+  "subtitle": "Google Ads, Facebook Ads & SEO Tracking",
+  "description": "AI-optimized advertising campaigns with ROI dashboards, keyword tracking, and performance analytics",
+  "icon": "📊",
+  "color": "red",
+  "scenario": {
+    "businessName": "Elite HVAC Solutions",
+    "businessType": "HVAC Installation & Repair",
+    "problem": "Wasting $3,500/month on ads with poor targeting, no SEO strategy, 1.2x ROI",
+    "solution": "AvAIL AI-optimized ads + SEO with smart bidding and conversion tracking"
+  },
+  "demoData": {
+    "googleAds": {
+      "campaigns": [
+        {
+          "name": "Emergency HVAC Repair",
+          "status": "Active",
+          "budget": "$800/month",
+          "impressions": 18400,
+          "clicks": 523,
+          "ctr": "2.84%",
+          "avgCPC": "$4.21",
+          "conversions": 47,
+          "conversionRate": "8.99%",
+          "costPerLead": "$17.02",
+          "revenue": "$14,100",
+          "roi": "17.6x"
+        },
+        {
+          "name": "AC Installation",
+          "status": "Active",
+          "budget": "$600/month",
+          "impressions": 12300,
+          "clicks": 387,
+          "ctr": "3.15%",
+          "avgCPC": "$3.88",
+          "conversions": 24,
+          "conversionRate": "6.20%",
+          "costPerLead": "$25.00",
+          "revenue": "$28,800",
+          "roi": "48x"
+        },
+        {
+          "name": "Furnace Maintenance",
+          "status": "Active",
+          "budget": "$400/month",
+          "impressions": 9200,
+          "clicks": 298,
+          "ctr": "3.24%",
+          "avgCPC": "$2.95",
+          "conversions": 31,
+          "conversionRate": "10.40%",
+          "costPerLead": "$12.90",
+          "revenue": "$6,200",
+          "roi": "15.5x"
+        }
+      ],
+      "totalSpend": "$1,800/month",
+      "totalConversions": 102,
+      "avgCostPerLead": "$17.65",
+      "totalRevenue": "$49,100",
+      "overallROI": "27.3x"
+    },
+    "facebookAds": {
+      "campaigns": [
+        {
+          "name": "Summer AC Special",
+          "objective": "Lead Generation",
+          "budget": "$400/month",
+          "reach": 24500,
+          "impressions": 67800,
+          "clicks": 1240,
+          "ctr": "1.83%",
+          "leads": 87,
+          "costPerLead": "$4.60",
+          "conversionRate": "7.02%",
+          "revenue": "$8,700",
+          "roi": "21.8x"
+        },
+        {
+          "name": "24/7 Emergency Service",
+          "objective": "Conversions",
+          "budget": "$300/month",
+          "reach": 18900,
+          "impressions": 52300,
+          "clicks": 892,
+          "ctr": "1.71%",
+          "leads": 63,
+          "costPerLead": "$4.76",
+          "conversionRate": "7.06%",
+          "revenue": "$12,600",
+          "roi": "42x"
+        }
+      ],
+      "totalSpend": "$700/month",
+      "totalLeads": 150,
+      "avgCostPerLead": "$4.67",
+      "totalRevenue": "$21,300",
+      "overallROI": "30.4x"
+    },
+    "seo": {
+      "topKeywords": [
+        {
+          "keyword": "hvac repair near me",
+          "position": 2,
+          "searchVolume": "8,100/mo",
+          "difficulty": "Medium",
+          "clicks": 287,
+          "impressions": 4200
+        },
+        {
+          "keyword": "emergency hvac service",
+          "position": 1,
+          "searchVolume": "3,600/mo",
+          "difficulty": "Medium",
+          "clicks": 412,
+          "impressions": 2890
+        },
+        {
+          "keyword": "ac installation cost",
+          "position": 3,
+          "searchVolume": "5,400/mo",
+          "difficulty": "High",
+          "clicks": 198,
+          "impressions": 3780
+        },
+        {
+          "keyword": "furnace repair",
+          "position": 1,
+          "searchVolume": "2,900/mo",
+          "difficulty": "Low",
+          "clicks": 324,
+          "impressions": 2100
+        },
+        {
+          "keyword": "hvac maintenance plan",
+          "position": 4,
+          "searchVolume": "1,800/mo",
+          "difficulty": "Low",
+          "clicks": 89,
+          "impressions": 1340
+        }
+      ],
+      "totalKeywords": 47,
+      "keywordsInTop3": 15,
+      "keywordsInTop10": 32,
+      "organicTraffic": 1810,
+      "organicLeads": 67,
+      "estimatedValue": "$4,200/month"
+    },
+    "budgetAllocation": {
+      "googleAds": {
+        "amount": "$1,800",
+        "percentage": 72
+      },
+      "facebookAds": {
+        "amount": "$700",
+        "percentage": 28
+      },
+      "total": "$2,500"
+    },
+    "performanceOverTime": [
+      {"month": "Aug", "spend": 2100, "leads": 118, "revenue": 16200, "roi": 7.7},
+      {"month": "Sep", "spend": 2300, "leads": 156, "revenue": 22400, "roi": 9.7},
+      {"month": "Oct", "spend": 2500, "leads": 189, "revenue": 28100, "roi": 11.2},
+      {"month": "Nov", "spend": 2500, "leads": 252, "revenue": 38200, "roi": 15.3}
+    ],
+    "competitorAnalysis": {
+      "yourBusiness": {
+        "avgPosition": 2.1,
+        "adSpend": "$2,500",
+        "estimatedLeads": 252,
+        "marketShare": "18%"
+      },
+      "competitors": [
+        {"name": "Cool Air HVAC", "avgPosition": 1.8, "marketShare": "22%"},
+        {"name": "Comfort Climate", "avgPosition": 3.2, "marketShare": "15%"},
+        {"name": "Pro HVAC Services", "avgPosition": 4.1, "marketShare": "12%"}
+      ]
+    }
+  },
+  "metrics": {
+    "before": {
+      "monthlyAdSpend": "$3,500",
+      "totalLeads": "87",
+      "costPerLead": "$40.23",
+      "conversionRate": "2.1%",
+      "roi": "1.2x",
+      "seoTraffic": "120/month"
+    },
+    "after": {
+      "monthlyAdSpend": "$2,500",
+      "totalLeads": "252",
+      "costPerLead": "$9.92",
+      "conversionRate": "8.2%",
+      "roi": "15.3x",
+      "seoTraffic": "1,810/month"
+    },
+    "savings": {
+      "spendReduction": "$1,000/month",
+      "leadIncrease": "190%",
+      "costPerLeadReduction": "75%",
+      "monthlyRevenue": "$38,200",
+      "profitIncrease": "+$28,700/month"
+    }
+  },
+  "features": [
+    "AI-optimized Google Ads campaigns",
+    "Facebook/Instagram ad management",
+    "Smart bidding & budget allocation",
+    "Keyword research & tracking",
+    "SEO optimization & reporting",
+    "Conversion tracking & attribution",
+    "Competitor analysis",
+    "ROI dashboards & alerts"
+  ]
+}

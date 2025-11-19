@@ -1,0 +1,173 @@
+{
+  "id": "social",
+  "title": "AvAIL Social Media",
+  "subtitle": "AI Content & Video Generation",
+  "description": "30-day content calendar with AI captions, Sora video generation, and social funnel tracking",
+  "icon": "📸",
+  "color": "pink",
+  "scenario": {
+    "businessName": "Prestige Auto Detailing",
+    "businessType": "Mobile Auto Detailing",
+    "problem": "Posting 4 times per month, 850 followers, getting 3 leads/month from social",
+    "solution": "AvAIL social media automation with AI content and Sora video creation"
+  },
+  "demoData": {
+    "contentCalendar": [
+      {
+        "date": "Mon, Dec 2",
+        "platform": ["Instagram", "Facebook"],
+        "postType": "Before/After Photo",
+        "caption": "From dusty to dazzling! ✨ This 2023 Tesla Model Y got the full Prestige treatment. Swipe to see the transformation! 🚗💎\n\n📍 Book your detail: [link]\n\n#AutoDetailing #CarCare #TeslaDetailing #MobileDetailing #Denver",
+        "hashtags": 12,
+        "scheduled": "9:00 AM",
+        "estimatedReach": "1,200-1,800",
+        "aiGenerated": true
+      },
+      {
+        "date": "Wed, Dec 4",
+        "platform": ["Instagram", "TikTok"],
+        "postType": "Sora Video",
+        "caption": "Watch this satisfying interior transformation! 😍 Our ceramic coating makes water bead like magic. \n\nWant this for your car? DM us! 💬\n\n#Satisfying #CarDetailing #CeramicCoating #ASMR",
+        "videoLength": "15 sec",
+        "scheduled": "6:00 PM",
+        "estimatedReach": "3,500-5,000",
+        "aiGenerated": true,
+        "videoType": "Sora AI"
+      },
+      {
+        "date": "Fri, Dec 6",
+        "platform": ["Facebook", "LinkedIn"],
+        "postType": "Educational Post",
+        "caption": "Why ceramic coating? ⚡\n\n✅ Lasts 2-5 years\n✅ Protects against UV damage\n✅ Makes cleaning easier\n✅ Enhances shine\n\nProtect your investment today! Book now: [link]\n\n#CarCare #CeramicCoating #AutoProtection",
+        "scheduled": "12:00 PM",
+        "estimatedReach": "800-1,200",
+        "aiGenerated": true
+      },
+      {
+        "date": "Sun, Dec 8",
+        "platform": ["Instagram"],
+        "postType": "Customer Testimonial",
+        "caption": "⭐⭐⭐⭐⭐ 'Best detail I've ever had! My car looks brand new.' - Mike T.\n\nExperience the Prestige difference. Limited slots available this week! 🚀\n\nBook: [link] or DM us\n\n#CustomerLove #5StarService #AutoDetailing",
+        "scheduled": "10:00 AM",
+        "estimatedReach": "1,000-1,500",
+        "aiGenerated": true
+      },
+      {
+        "date": "Tue, Dec 10",
+        "platform": ["Instagram", "TikTok"],
+        "postType": "Sora Video",
+        "caption": "POV: Your car after our full detail package 🤩✨\n\nInterior + Exterior + Ceramic Coating = Perfection\n\nTap the link in bio to book! 📲\n\n#POV #CarTransformation #Detailing #Viral",
+        "videoLength": "10 sec",
+        "scheduled": "7:00 PM",
+        "estimatedReach": "4,000-6,000",
+        "aiGenerated": true,
+        "videoType": "Sora AI"
+      },
+      {
+        "date": "Thu, Dec 12",
+        "platform": ["Facebook"],
+        "postType": "Special Offer",
+        "caption": "🎄 HOLIDAY SPECIAL 🎄\n\nGet 20% OFF full details this week!\n\nGive your car the gift it deserves before the holidays. Limited time only!\n\nBook now: [link] 🎁\n\n#HolidaySpecial #CarDetailing #LimitedOffer",
+        "scheduled": "9:00 AM",
+        "estimatedReach": "2,000-3,000",
+        "aiGenerated": true
+      }
+    ],
+    "soraVideos": [
+      {
+        "id": 1,
+        "title": "Ceramic Coating Application",
+        "description": "Mesmerizing time-lapse of ceramic coating being applied",
+        "duration": "15 sec",
+        "views": 8420,
+        "likes": 634,
+        "shares": 89,
+        "leadsGenerated": 12
+      },
+      {
+        "id": 2,
+        "title": "Pressure Wash Transformation",
+        "description": "Satisfying pressure washing of dirty wheels",
+        "duration": "10 sec",
+        "views": 12300,
+        "likes": 891,
+        "shares": 124,
+        "leadsGenerated": 18
+      },
+      {
+        "id": 3,
+        "title": "Interior Detailing ASMR",
+        "description": "Close-up shots of interior vacuum and steam cleaning",
+        "duration": "20 sec",
+        "views": 6780,
+        "likes": 445,
+        "shares": 67,
+        "leadsGenerated": 8
+      }
+    ],
+    "platformPerformance": {
+      "Instagram": {
+        "followers": 3200,
+        "avgEngagement": "8.2%",
+        "topPostReach": 12400,
+        "monthlyLeads": 18
+      },
+      "Facebook": {
+        "followers": 2840,
+        "avgEngagement": "5.1%",
+        "topPostReach": 8900,
+        "monthlyLeads": 7
+      },
+      "TikTok": {
+        "followers": 1580,
+        "avgEngagement": "12.4%",
+        "topPostReach": 18700,
+        "monthlyLeads": 3
+      }
+    },
+    "funnelTracking": {
+      "socialViews": 45200,
+      "profileVisits": 3840,
+      "linkClicks": 892,
+      "websiteVisits": 673,
+      "leadsGenerated": 28,
+      "bookingsCompleted": 19,
+      "revenue": "$8,400",
+      "roi": "680%"
+    }
+  },
+  "metrics": {
+    "before": {
+      "postsPerMonth": "4",
+      "followers": "850",
+      "engagementRate": "2%",
+      "monthlyLeads": "3",
+      "timeSpent": "8 hrs/month",
+      "revenue": "$900"
+    },
+    "after": {
+      "postsPerMonth": "20",
+      "followers": "3,200",
+      "engagementRate": "8%",
+      "monthlyLeads": "28",
+      "timeSpent": "2 hrs/month",
+      "revenue": "$8,400"
+    },
+    "savings": {
+      "followerGrowth": "277%",
+      "leadIncrease": "9.3x",
+      "timeSaved": "6 hrs/month",
+      "monthlyRevenue": "+$7,500"
+    }
+  },
+  "features": [
+    "30-day auto-generated content calendar",
+    "AI-written captions & hashtags",
+    "Sora AI video generation",
+    "Multi-platform scheduling",
+    "Social funnel tracking",
+    "Engagement analytics",
+    "Competitor analysis",
+    "Lead source attribution"
+  ]
+}

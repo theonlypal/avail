@@ -1,0 +1,144 @@
+{
+  "id": "crm",
+  "title": "AvAIL CRM",
+  "subtitle": "Smart Calendar & Lead Management",
+  "description": "AI-powered CRM with automated scheduling, lead tracking, follow-ups, and route optimization",
+  "icon": "📅",
+  "color": "blue",
+  "scenario": {
+    "businessName": "ABC Landscaping",
+    "businessType": "Landscaping Services",
+    "problem": "20% no-show rate costing $8,000/month in lost revenue",
+    "solution": "AvAIL CRM with automated reminders, smart scheduling, and route optimization"
+  },
+  "demoData": {
+    "appointments": [
+      {
+        "id": 1,
+        "time": "9:00 AM",
+        "client": "Sarah Johnson",
+        "service": "Lawn Maintenance",
+        "location": "123 Oak Street",
+        "status": "confirmed",
+        "reminderSent": true,
+        "value": "$150"
+      },
+      {
+        "id": 2,
+        "time": "11:00 AM",
+        "client": "Mike Davis",
+        "service": "Tree Trimming",
+        "location": "456 Maple Ave",
+        "status": "confirmed",
+        "reminderSent": true,
+        "value": "$300"
+      },
+      {
+        "id": 3,
+        "time": "1:30 PM",
+        "client": "Emily Chen",
+        "service": "Garden Design",
+        "location": "789 Pine Road",
+        "status": "pending",
+        "reminderSent": false,
+        "value": "$500"
+      },
+      {
+        "id": 4,
+        "time": "3:00 PM",
+        "client": "Robert Wilson",
+        "service": "Irrigation Install",
+        "location": "321 Elm Street",
+        "status": "confirmed",
+        "reminderSent": true,
+        "value": "$800"
+      },
+      {
+        "id": 5,
+        "time": "4:30 PM",
+        "client": "Lisa Martinez",
+        "service": "Seasonal Cleanup",
+        "location": "654 Birch Lane",
+        "status": "confirmed",
+        "reminderSent": true,
+        "value": "$250"
+      }
+    ],
+    "leadPipeline": {
+      "new": [
+        {"name": "Tom Anderson", "service": "Lawn Care", "value": "$200", "source": "Website"},
+        {"name": "Jessica Brown", "service": "Landscaping", "value": "$1,200", "source": "Referral"}
+      ],
+      "contacted": [
+        {"name": "David Lee", "service": "Hardscaping", "value": "$3,500", "source": "Google Ads"},
+        {"name": "Maria Garcia", "service": "Pool Landscaping", "value": "$2,800", "source": "Facebook"}
+      ],
+      "quoted": [
+        {"name": "James Taylor", "service": "Full Yard Makeover", "value": "$8,000", "source": "Website"}
+      ],
+      "won": [
+        {"name": "Patricia White", "service": "Patio Install", "value": "$4,200", "source": "Referral"}
+      ]
+    },
+    "automations": [
+      {
+        "name": "24-Hour Reminder",
+        "description": "Auto SMS/Email 24 hours before appointment",
+        "active": true,
+        "triggered": 127,
+        "effectiveness": "95% confirmation rate"
+      },
+      {
+        "name": "Follow-Up Sequence",
+        "description": "3-touch follow-up for new leads",
+        "active": true,
+        "triggered": 84,
+        "effectiveness": "67% response rate"
+      },
+      {
+        "name": "Review Request",
+        "description": "Auto-request review 2 days after service",
+        "active": true,
+        "triggered": 93,
+        "effectiveness": "42% review completion"
+      }
+    ],
+    "routeOptimization": {
+      "enabled": true,
+      "totalDistance": "38 miles",
+      "timeSaved": "2.5 hours",
+      "fuelSaved": "$15"
+    }
+  },
+  "metrics": {
+    "before": {
+      "noShowRate": "20%",
+      "costPerMonth": "$8,000 lost",
+      "schedulingTime": "20 hrs/week",
+      "leadResponseTime": "4-6 hours",
+      "conversionRate": "15%"
+    },
+    "after": {
+      "noShowRate": "2%",
+      "costPerMonth": "$800 lost",
+      "schedulingTime": "2 hrs/week",
+      "leadResponseTime": "< 5 minutes",
+      "conversionRate": "35%"
+    },
+    "savings": {
+      "monthly": "$7,200",
+      "timeSaved": "18 hours/week",
+      "revenueIncrease": "133%"
+    }
+  },
+  "features": [
+    "Smart calendar with automated scheduling",
+    "AI-powered lead scoring and prioritization",
+    "Automated SMS/Email reminders",
+    "Route optimization for field teams",
+    "Drag-and-drop pipeline management",
+    "Follow-up automation sequences",
+    "Mobile app for on-the-go access",
+    "Integration with QuickBooks & Stripe"
+  ]
+}

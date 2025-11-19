@@ -1,0 +1,136 @@
+{
+  "id": "sms",
+  "title": "AvAIL Call & Text Support",
+  "subtitle": "Automated SMS & Booking Confirmations",
+  "description": "AI-powered SMS automation for booking confirmations, reminders, and customer updates",
+  "icon": "📱",
+  "color": "purple",
+  "scenario": {
+    "businessName": "Elite Auto Detailing",
+    "businessType": "Auto Detailing & Car Wash",
+    "problem": "High no-show rate, constant back-and-forth texts eating up staff time",
+    "solution": "AvAIL SMS automation with smart confirmations and two-way chat"
+  },
+  "demoData": {
+    "smsThread": [
+      {
+        "role": "system",
+        "message": "New booking created: Sarah Johnson - Full Detail Package - Tomorrow 2:00 PM",
+        "timestamp": "Today 3:15 PM",
+        "type": "notification"
+      },
+      {
+        "role": "business",
+        "message": "Hi Sarah! Your auto detail is confirmed for tomorrow at 2:00 PM. Please reply YES to confirm or CHANGE to reschedule.",
+        "timestamp": "Today 3:16 PM",
+        "automated": true
+      },
+      {
+        "role": "customer",
+        "message": "YES",
+        "timestamp": "Today 3:22 PM"
+      },
+      {
+        "role": "business",
+        "message": "Perfect! ✓ You're all set for tomorrow at 2:00 PM. We'll send a reminder 2 hours before. Reply STOP to cancel or INFO for details.",
+        "timestamp": "Today 3:22 PM",
+        "automated": true
+      },
+      {
+        "role": "business",
+        "message": "Hi Sarah! Friendly reminder: Your auto detail appointment is in 2 hours (2:00 PM today). See you soon! 🚗✨",
+        "timestamp": "Tomorrow 12:00 PM",
+        "automated": true
+      },
+      {
+        "role": "customer",
+        "message": "Running 10 min late, is that ok?",
+        "timestamp": "Tomorrow 1:50 PM"
+      },
+      {
+        "role": "business",
+        "message": "No problem at all! We'll see you around 2:10 PM. Drive safely!",
+        "timestamp": "Tomorrow 1:51 PM",
+        "automated": true
+      },
+      {
+        "role": "business",
+        "message": "Hi Sarah! Your car is ready! ✨ We completed: Full interior detail, exterior wash & wax, tire shine. Total: $149. Reply PHOTOS to see before/after pics!",
+        "timestamp": "Tomorrow 4:30 PM",
+        "automated": true
+      },
+      {
+        "role": "customer",
+        "message": "PHOTOS",
+        "timestamp": "Tomorrow 4:32 PM"
+      },
+      {
+        "role": "business",
+        "message": "[Photo attachments] Your car looks amazing! Hope you love it. Would you mind leaving us a quick review? It helps us so much: https://avail.to/review 💙",
+        "timestamp": "Tomorrow 4:33 PM",
+        "automated": true
+      }
+    ],
+    "automationRules": [
+      {
+        "trigger": "New booking created",
+        "action": "Send confirmation request within 5 minutes",
+        "enabled": true
+      },
+      {
+        "trigger": "2 hours before appointment",
+        "action": "Send reminder with booking details",
+        "enabled": true
+      },
+      {
+        "trigger": "Service completed",
+        "action": "Send completion notice + review request",
+        "enabled": true
+      },
+      {
+        "trigger": "Customer asks question",
+        "action": "AI responds or escalates to human",
+        "enabled": true
+      }
+    ],
+    "analytics": {
+      "messagesSent": 847,
+      "confirmationRate": "94%",
+      "responseRate": "87%",
+      "automationSavings": "18 hours/week",
+      "customerSatisfaction": "4.8/5"
+    }
+  },
+  "metrics": {
+    "before": {
+      "noShowRate": "18%",
+      "timeOnTexting": "15 hrs/week",
+      "responseTime": "45 min avg",
+      "customerSatisfaction": "78%",
+      "reviewRequests": "Manual, inconsistent"
+    },
+    "after": {
+      "noShowRate": "3%",
+      "timeOnTexting": "3 hrs/week",
+      "responseTime": "< 2 minutes",
+      "customerSatisfaction": "95%",
+      "reviewRequests": "100% automated"
+    },
+    "savings": {
+      "monthly": "$1,800 from prevented no-shows",
+      "timeSaved": "12 hours/week",
+      "appointmentsRecovered": "6/week avg",
+      "costPerWeek": "$6.75 (SMS fees)"
+    }
+  },
+  "features": [
+    "Automated booking confirmations",
+    "Smart appointment reminders",
+    "Two-way AI chat responses",
+    "Service completion notifications",
+    "Automatic review requests",
+    "Rescheduling management",
+    "Customer intent recognition",
+    "Human escalation when needed"
+  ]
+}
