@@ -9,8 +9,6 @@
 
 import { useEffect, useState } from "react";
 import type { Team, Lead } from "@/types";
-import { getCurrentTeam } from "@/lib/team";
-import { fetchLeads } from "@/lib/leads";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -30,7 +28,10 @@ export default function TeamPage() {
   const planLimit = 500;
 
   useEffect(() => {
-    Promise.all([getCurrentTeam(), fetchLeads()])
+    Promise.all([
+      fetch('/api/team').then(res => res.json()),
+      fetch('/api/leads').then(res => res.json())
+    ])
       .then(([teamData, leadsData]) => {
         setTeam(teamData);
         setLeads(leadsData);
