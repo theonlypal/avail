@@ -1,251 +1,132 @@
-import { NextRequest, NextResponse } from "next/server";
-import { discoverLeads, discoverLeadsMultiLocation, rankLeads } from "@/lib/ai-lead-discovery";
-import { getDb } from "@/lib/db";
+/**
+ * API Route for AI-powered lead discovery
+ * POST /api/leads/discover - Discover and save new leads
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { discoverLeads, type DiscoveryQuery } from '@/lib/ai-lead-discovery-v2';
+import { createLead } from '@/lib/leads-sqlite';
+import { enrichLead } from '@/lib/lead-enrichment-v2';
+
+export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // 5 minutes for Vercel
 
 /**
  * POST /api/leads/discover
- *
- * Discovers real leads using AI-powered search
- *
- * Body:
- * {
- *   "industry": "HVAC",
- *   "location": "San Diego, CA",  // or locations: ["San Diego, CA", "Los Angeles, CA"]
- *   "maxResults": 20,
- *   "saveToDb": true
- * }
+ * Body: DiscoveryQuery
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
-      industry,
-      location,
-      locations,
-      maxResults = 20,
-      minRating,
-      saveToDb = false,
-      teamId,
-    } = body;
 
-    // Validate inputs
-    if (!industry) {
+    // Validate required fields
+    if (!body.industry || !body.location) {
       return NextResponse.json(
-        { error: "Industry is required" },
+        { error: 'Industry and location are required' },
         { status: 400 }
       );
     }
 
-    if (!location && !locations) {
-      return NextResponse.json(
-        { error: "Location or locations array is required" },
-        { status: 400 }
-      );
-    }
+    const query: DiscoveryQuery = {
+      industry: body.industry,
+      location: body.location,
+      minRating: body.minRating,
+      targetCriteria: body.targetCriteria,
+      maxResults: body.maxResults || 20,
+    };
 
-    console.log(`[API] Starting lead discovery: ${industry} in ${location || locations.join(", ")}`);
+    console.log('🚀 Starting lead discovery...');
+    console.log('Query:', query);
 
-    // Discover leads
-    let result;
-    if (locations && Array.isArray(locations)) {
-      result = await discoverLeadsMultiLocation(
-        industry,
-        locations,
-        Math.floor(maxResults / locations.length)
-      );
-    } else {
-      result = await discoverLeads({
-        industry,
-        location,
-        maxResults,
-        minRating,
+    // Step 1: Discover leads using AI
+    const discoveredLeads = await discoverLeads(query);
+
+    if (discoveredLeads.length === 0) {
+      return NextResponse.json({
+        success: true,
+        discovered: 0,
+        created: 0,
+        enriched: 0,
+        leads: [],
+        message: 'No leads found matching the criteria',
       });
     }
 
-    // Rank leads by opportunity score
-    const rankedLeads = rankLeads(result.leads);
+    console.log(`✅ Discovered ${discoveredLeads.length} leads`);
 
-    console.log(`[API] Discovery complete: ${rankedLeads.length} qualified leads`);
+    // Step 2: Save leads to database
+    const createdLeads = [];
+    const errors = [];
 
-    // Save to database if requested
-    if (saveToDb && rankedLeads.length > 0) {
+    for (const discoveredLead of discoveredLeads) {
       try {
-        const db = getDb();
-        const insertedCount = await saveLeadsToDatabase(db, rankedLeads, teamId);
-        console.log(`[API] Saved ${insertedCount} leads to database`);
-
-        return NextResponse.json({
-          success: true,
-          leads: rankedLeads,
-          totalFound: result.totalFound,
-          savedToDb: insertedCount,
-          searchQuery: result.searchQuery,
-          timestamp: result.timestamp,
+        const newLead = await createLead({
+          business_name: discoveredLead.business_name,
+          industry: discoveredLead.industry,
+          location: discoveredLead.location,
+          phone: discoveredLead.phone || null,
+          email: discoveredLead.email || null,
+          website: discoveredLead.website || null,
+          rating: discoveredLead.rating || null,
+          review_count: discoveredLead.review_count || 0,
+          website_score: 0,
+          social_presence: 'unknown',
+          ad_presence: false,
+          opportunity_score: 0,
+          pain_points: [],
+          recommended_services: [],
+          ai_summary: null,
+          lat: discoveredLead.lat || null,
+          lng: discoveredLead.lng || null,
+          added_by: 'ai_discovery',
+          source: discoveredLead.source,
         });
-      } catch (dbError) {
-        console.error("[API] Database save error:", dbError);
-        // Still return the leads even if DB save fails
-        return NextResponse.json({
-          success: true,
-          leads: rankedLeads,
-          totalFound: result.totalFound,
-          savedToDb: 0,
-          dbError: "Failed to save to database",
-          searchQuery: result.searchQuery,
-          timestamp: result.timestamp,
+
+        createdLeads.push(newLead);
+      } catch (error: any) {
+        console.error(`Failed to create lead ${discoveredLead.business_name}:`, error);
+        errors.push({
+          business_name: discoveredLead.business_name,
+          error: error.message,
         });
       }
     }
 
+    console.log(`✅ Created ${createdLeads.length} leads in database`);
+
+    // Step 3: Enrich leads (in background for first few)
+    const enrichmentCount = Math.min(5, createdLeads.length); // Limit to 5 for initial enrichment
+    const enrichedLeads = [];
+
+    for (let i = 0; i < enrichmentCount; i++) {
+      const lead = createdLeads[i];
+      try {
+        await enrichLead(lead.id, lead);
+        enrichedLeads.push(lead);
+      } catch (error) {
+        console.error(`Failed to enrich lead ${lead.id}:`, error);
+      }
+    }
+
+    console.log(`✅ Enriched ${enrichedLeads.length} leads`);
+
     return NextResponse.json({
       success: true,
-      leads: rankedLeads,
-      totalFound: result.totalFound,
-      searchQuery: result.searchQuery,
-      timestamp: result.timestamp,
+      discovered: discoveredLeads.length,
+      created: createdLeads.length,
+      enriched: enrichedLeads.length,
+      leads: createdLeads,
+      errors: errors.length > 0 ? errors : undefined,
+      message: `Successfully discovered and created ${createdLeads.length} leads. ${enrichedLeads.length} leads enriched immediately.`,
     });
-  } catch (error) {
-    console.error("[API] Lead discovery error:", error);
+  } catch (error: any) {
+    console.error('Error in lead discovery:', error);
     return NextResponse.json(
       {
-        error: "Lead discovery failed",
-        details: error instanceof Error ? error.message : "Unknown error",
+        error: 'Failed to discover leads',
+        details: error.message,
       },
       { status: 500 }
     );
   }
-}
-
-/**
- * Save discovered leads to database
- */
-async function saveLeadsToDatabase(
-  db: any,
-  leads: any[],
-  teamId?: string
-): Promise<number> {
-  let insertedCount = 0;
-
-  // Get or create default team
-  let team = db
-    .prepare("SELECT id FROM teams LIMIT 1")
-    .get() as { id: string } | undefined;
-
-  if (!team) {
-    // Create default team if none exists
-    const teamIdToUse = teamId || crypto.randomUUID();
-    db.prepare(
-      `INSERT INTO teams (id, name, industry, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?)`
-    ).run(teamIdToUse, "Sales Team", "Multi-Industry", Date.now(), Date.now());
-
-    team = { id: teamIdToUse };
-  }
-
-  for (const lead of leads) {
-    try {
-      // Check if lead already exists (by phone or business_name+location)
-      let existing;
-      if (lead.phone) {
-        existing = db
-          .prepare("SELECT id FROM leads WHERE phone = ?")
-          .get(lead.phone);
-      } else {
-        const location = `${lead.city}, ${lead.state}`;
-        existing = db
-          .prepare("SELECT id FROM leads WHERE business_name = ? AND location LIKE ?")
-          .get(lead.name, `%${lead.city}%`);
-      }
-
-      if (existing) {
-        console.log(`[DB] Skipping duplicate: ${lead.name}`);
-        continue;
-      }
-
-      // Insert lead
-      const leadId = crypto.randomUUID();
-      const now = new Date().toISOString();
-      const location = `${lead.city}, ${lead.state}`;
-
-      db.prepare(
-        `INSERT INTO leads (
-          id, team_id, business_name, industry, location, phone, email, website,
-          rating, review_count, opportunity_score, pain_points,
-          source, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(
-        leadId,
-        team.id,
-        lead.name,
-        lead.industry,
-        location,
-        lead.phone,
-        lead.email,
-        lead.website,
-        lead.rating || 0,
-        lead.reviewCount || 0,
-        lead.opportunityScore,
-        JSON.stringify(lead.painPoints),
-        lead.source,
-        now,
-        now
-      );
-
-      insertedCount++;
-      console.log(`[DB] ✓ Inserted: ${lead.name} (score: ${lead.opportunityScore})`);
-    } catch (error) {
-      console.error(`[DB] Error inserting lead ${lead.name}:`, error);
-      continue;
-    }
-  }
-
-  return insertedCount;
-}
-
-/**
- * GET /api/leads/discover
- *
- * Get discovery job status or start a quick test discovery
- */
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const test = searchParams.get("test");
-
-  if (test === "true") {
-    // Quick test discovery - 5 HVAC leads in San Diego
-    try {
-      const result = await discoverLeads({
-        industry: "HVAC",
-        location: "San Diego, CA",
-        maxResults: 5,
-      });
-
-      return NextResponse.json({
-        success: true,
-        test: true,
-        leads: result.leads,
-        message: `Found ${result.leads.length} leads in test discovery`,
-      });
-    } catch (error) {
-      return NextResponse.json(
-        {
-          error: "Test discovery failed",
-          details: error instanceof Error ? error.message : "Unknown error",
-        },
-        { status: 500 }
-      );
-    }
-  }
-
-  return NextResponse.json({
-    message: "Lead Discovery API",
-    endpoints: {
-      "POST /api/leads/discover": "Discover leads with AI",
-      "GET /api/leads/discover?test=true": "Run test discovery",
-    },
-    apiKeys: {
-      anthropic: !!process.env.ANTHROPIC_API_KEY,
-      serper: !!process.env.SERPER_API_KEY,
-    },
-  });
 }
