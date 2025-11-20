@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
           phone: discoveredLead.phone || null,
           email: discoveredLead.email || null,
           website: discoveredLead.website || null,
-          rating: discoveredLead.rating || null,
+          rating: discoveredLead.rating ?? 0,
           review_count: discoveredLead.review_count || 0,
           website_score: 0,
           social_presence: 'unknown',
