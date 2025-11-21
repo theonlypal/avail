@@ -140,8 +140,14 @@ function initializeSqliteSchema() {
  * Initialize Postgres schema (production only)
  */
 export async function initializePostgresSchema() {
+  console.log('🔍 Checking database connection...');
+  console.log('IS_PRODUCTION:', IS_PRODUCTION);
+  console.log('POSTGRES_URL exists:', !!process.env.POSTGRES_URL);
+  console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
+  console.log('postgresUrl value:', postgresUrl ? 'SET' : 'NOT SET');
+
   if (!sql) {
-    throw new Error('Postgres connection not available - missing POSTGRES_URL');
+    throw new Error('Postgres connection not available - missing DATABASE_URL or POSTGRES_URL environment variable');
   }
 
   try {
