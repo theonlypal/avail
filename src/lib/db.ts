@@ -1,10 +1,10 @@
 /**
  * Database Layer for Leadly.AI
  * - Development: SQLite (better-sqlite3)
- * - Production: Neon Postgres
+ * - Production: PostgreSQL (via @vercel/postgres)
  */
 
-import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
+import { sql as vercelSql } from '@vercel/postgres';
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
@@ -14,10 +14,8 @@ const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'pr
 // Railway provides DATABASE_URL, Vercel/Neon provides POSTGRES_URL
 const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
 
-// Neon SQL client for production
-const sql: NeonQueryFunction<false, false> | null = IS_PRODUCTION && postgresUrl
-  ? neon(postgresUrl)
-  : null;
+// PostgreSQL client for production (works with Railway and Vercel)
+const sql = IS_PRODUCTION && postgresUrl ? vercelSql : null;
 
 // SQLite setup (local development)
 const DB_PATH = path.join(process.cwd(), 'data', 'leadly.db');
@@ -173,7 +171,7 @@ export async function initializePostgresSchema() {
       await sql`INSERT INTO team_members (id, team_id, name, email, role) VALUES (${memberId}, ${teamId}, ${'Admin User'}, ${'admin@leadly.ai'}, ${'owner'})`;
     }
 
-    console.log('✅ Neon Postgres database initialized');
+    console.log('✅ PostgreSQL database initialized successfully');
   } catch (error) {
     console.error('Error initializing Postgres schema:', error);
     throw error;
