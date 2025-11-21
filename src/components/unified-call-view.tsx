@@ -48,6 +48,7 @@ interface UnifiedCallViewProps {
 
 export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCallViewProps) {
   // State
+  const [isMounted, setIsMounted] = useState(false); // Track client-side mount
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -373,14 +374,38 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
   }, []);
 
   /**
+   * Mark component as mounted on client-side
+   */
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  /**
    * Auto-start microphone capture when component mounts (client-side only)
    */
   useEffect(() => {
-    // Only start call on client-side after component is mounted
-    if (typeof window !== 'undefined') {
+    if (isMounted && !isCallActive) {
       startCall();
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMounted]);
+
+  // Prevent hydration mismatch by not rendering until client-side
+  if (!isMounted) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+        <div className="text-center space-y-6 p-8">
+          <div className="w-32 h-32 mx-auto bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center shadow-2xl animate-pulse">
+            <Phone className="h-16 w-16 text-white" />
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold text-white mb-2">Loading Call Interface...</h3>
+            <p className="text-slate-400">Preparing real-time transcription</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!isCallActive) {
     return (
