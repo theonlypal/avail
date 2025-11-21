@@ -9,11 +9,14 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
+
+// Railway provides DATABASE_URL, Vercel/Neon provides POSTGRES_URL
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
 
 // Neon SQL client for production
-const sql: NeonQueryFunction<false, false> | null = IS_PRODUCTION && process.env.POSTGRES_URL
-  ? neon(process.env.POSTGRES_URL)
+const sql: NeonQueryFunction<false, false> | null = IS_PRODUCTION && postgresUrl
+  ? neon(postgresUrl)
   : null;
 
 // SQLite setup (local development)
