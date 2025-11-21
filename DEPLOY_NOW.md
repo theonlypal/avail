@@ -1,7 +1,7 @@
 # 🚀 Deploy AVAIL to Railway - Complete Guide
 
 ## Your GitHub Repository
-**https://github.com/bydc-cloud/AVAIL.git**
+**https://github.com/theonlypal/avail** ✅ Code pushed successfully!
 
 ---
 
@@ -17,7 +17,7 @@
 
 1. Click **"New Project"**
 2. Select **"Deploy from GitHub repo"**
-3. Choose: **`bydc-cloud/AVAIL`**
+3. Choose: **`theonlypal/avail`**
 4. Railway will automatically:
    - Detect Next.js
    - Install dependencies
@@ -266,7 +266,7 @@ After successful deployment:
 
 | Resource | URL |
 |----------|-----|
-| Your GitHub Repo | https://github.com/bydc-cloud/AVAIL |
+| Your GitHub Repo | https://github.com/theonlypal/avail |
 | Railway Dashboard | https://railway.app/project/your-id |
 | Twilio Console | https://console.twilio.com/ |
 | Deepgram Dashboard | https://console.deepgram.com/ |

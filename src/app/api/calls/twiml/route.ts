@@ -7,9 +7,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * Uses Twilio Media Streams to capture BOTH sides of conversation
  */
 export async function GET(request: NextRequest) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000');
+  // Railway provides RAILWAY_PUBLIC_DOMAIN or we can use request.headers to get the host
+  const host = request.headers.get('host') || 'localhost:3000';
+  const protocol = host.includes('railway.app') || host.includes('vercel.app') ? 'https' : 'http';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
 
   // Get call parameters
   const { searchParams } = new URL(request.url);
