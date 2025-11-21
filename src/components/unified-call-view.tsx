@@ -95,6 +95,7 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
 
     const pollTranscripts = async () => {
       try {
+        console.log('[UnifiedCallView] Polling for transcripts. Call SID:', callSid);
         const response = await fetch(`/api/calls/stream?callSid=${callSid}`);
 
         if (!response.ok) {
@@ -103,9 +104,12 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
         }
 
         const data = await response.json();
+        console.log('[UnifiedCallView] Poll response:', data);
 
         // Merge Twilio/Deepgram transcripts into unified transcript
         if (data.transcript && data.transcript.length > 0) {
+          console.log('[UnifiedCallView] Received', data.transcript.length, 'transcripts from backend');
+
           setTranscript((prev) => {
             // Add new entries from Twilio/Deepgram that aren't already in transcript
             const existing = new Set(prev.map(t => `${t.speaker}-${t.timestamp}-${t.text}`));
@@ -120,13 +124,19 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
                 isFinal: true,
               }));
 
+            console.log('[UnifiedCallView] Adding', newEntries.length, 'new entries from call');
+
             // Merge and sort by timestamp
             const merged = [...prev, ...newEntries].sort((a, b) => a.timestamp - b.timestamp);
+            console.log('[UnifiedCallView] Total transcript entries:', merged.length);
             return merged;
           });
+        } else {
+          console.log('[UnifiedCallView] No transcripts in response');
         }
 
         if (data.status === 'completed') {
+          console.log('[UnifiedCallView] Call status: completed');
           setCallStatus('completed');
         }
       } catch (error) {
@@ -167,10 +177,14 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
       await audioCapture.current.start(
         stream,
         (text, isFinal) => {
+          console.log('[UnifiedCallView] Mic transcript received:', text, 'isFinal:', isFinal);
+
           // Update current mic text
           setCurrentMicText(text);
 
           if (isFinal && text.trim()) {
+            console.log('[UnifiedCallView] Adding final mic transcript to timeline:', text.trim());
+
             // Add to transcript history
             const entry: TranscriptEntry = {
               id: `mic-${Date.now()}-${Math.random()}`,
@@ -180,7 +194,11 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
               isFinal: true,
             };
 
-            setTranscript((prev) => [...prev, entry].sort((a, b) => a.timestamp - b.timestamp));
+            setTranscript((prev) => {
+              const updated = [...prev, entry].sort((a, b) => a.timestamp - b.timestamp);
+              console.log('[UnifiedCallView] Transcript updated. Total entries:', updated.length);
+              return updated;
+            });
             setCurrentMicText('');
 
             // Get AI coaching suggestion
