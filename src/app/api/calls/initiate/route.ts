@@ -4,8 +4,9 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
-const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+const sql = IS_PRODUCTION && postgresUrl ? neon(postgresUrl) : null;
 
 function getSqliteDb(): Database.Database {
   const DB_PATH = path.join(process.cwd(), 'data', 'leadly.db');
@@ -47,10 +48,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get app URL for callbacks
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000');
+    // Get app URL for callbacks (Railway or Vercel or local)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ||
+      (process.env.RAILWAY_PUBLIC_DOMAIN
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : 'http://localhost:3000');
 
     // REAL Twilio call - NO DEMO MODE
     try {
