@@ -11,13 +11,13 @@ import { useState } from "react";
 import { Phone, Sparkles, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import LiveCallCoach from "@/components/live-call-coach";
+import UnifiedCallView from "@/components/unified-call-view";
 
 export default function TestDialerPage() {
   const router = useRouter();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [businessName, setBusinessName] = useState("");
-  const [callStarted, setCallStarted] = useState(false);
+  const [callStarted, setCallStarted] = useState<string | false>(false); // Store call_sid
   const [error, setError] = useState("");
 
   // Format phone number as user types
@@ -81,7 +81,9 @@ export default function TestDialerPage() {
       }
 
       console.log(`✅ Twilio call initiated to ${e164Phone} - Call SID: ${result.call_sid}`);
-      setCallStarted(true);
+
+      // Store call SID in state to pass to LiveCallCoach
+      setCallStarted(result.call_sid);
     } catch (err: any) {
       setError("Failed to initiate call");
       alert(`Failed to start call: ${err.message}`);
@@ -122,7 +124,7 @@ export default function TestDialerPage() {
     setBusinessName("");
   };
 
-  // If call started, show LiveCallCoach
+  // If call started, show UnifiedCallView
   if (callStarted) {
     const digits = phoneNumber.replace(/\D/g, "");
     const e164Phone = digits.length === 11 ? `+${digits}` : `+1${digits}`;
@@ -137,10 +139,9 @@ export default function TestDialerPage() {
       rating: undefined,
       user_ratings_total: undefined,
       score: undefined,
-      place_id: undefined,
     };
 
-    return <LiveCallCoach lead={leadContext} onCallEnd={handleCallEnd} />;
+    return <UnifiedCallView callSid={callStarted} lead={leadContext} onCallEnd={handleCallEnd} />;
   }
 
   // Show phone input form
@@ -175,11 +176,15 @@ export default function TestDialerPage() {
             <div className="flex items-start gap-3">
               <Sparkles className="h-5 w-5 text-cyan-400 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-slate-300">
-                <p className="font-medium mb-1">Real Twilio Calls with AI Coaching</p>
+                <p className="font-medium mb-1">Unified Real-Time Transcription with AI Coaching</p>
                 <p className="text-slate-400">
-                  This makes a REAL phone call via Twilio to the number you enter. Your microphone will
-                  capture your side of the conversation for real-time transcription (307ms latency) with
-                  instant AI coaching suggestions powered by Claude Sonnet 4.5.
+                  This makes a REAL phone call via Twilio with THREE transcription sources in one view:
+                  <br />
+                  <span className="text-cyan-400">• Your microphone</span> (AssemblyAI - 307ms latency)
+                  <br />
+                  <span className="text-purple-400">• Both sides of the call</span> (Twilio + Deepgram with speaker diarization)
+                  <br />
+                  <span className="text-amber-400">• AI coaching suggestions</span> (Claude Sonnet 4.5 streaming)
                 </p>
               </div>
             </div>
@@ -266,16 +271,20 @@ export default function TestDialerPage() {
                   <span>Twilio will place a REAL phone call to the number you entered</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-emerald-400 mt-1">•</span>
-                  <span>Your microphone will be activated to capture your side of the conversation</span>
+                  <span className="text-cyan-400 mt-1">•</span>
+                  <span>Your microphone captures your voice (AssemblyAI - 307ms latency)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-purple-400 mt-1">•</span>
+                  <span>BOTH sides of the phone call are transcribed (Twilio + Deepgram with speaker ID)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-amber-400 mt-1">•</span>
+                  <span>AI provides live coaching suggestions (Claude Sonnet 4.5 streaming)</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-emerald-400 mt-1">•</span>
-                  <span>Real-time transcription will begin (307ms latency via AssemblyAI)</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-emerald-400 mt-1">•</span>
-                  <span>AI will provide live coaching suggestions as the conversation progresses</span>
+                  <span>All THREE sources blend into one unified transcript view in real-time</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-emerald-400 mt-1">•</span>
@@ -298,16 +307,16 @@ export default function TestDialerPage() {
         {/* Features List */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-slate-900/30 border border-white/10 rounded-xl p-4">
-            <div className="text-cyan-400 font-semibold mb-1">307ms Latency</div>
-            <div className="text-xs text-slate-400">Real-time transcription</div>
+            <div className="text-cyan-400 font-semibold mb-1">3-in-1 Transcription</div>
+            <div className="text-xs text-slate-400">Mic + Call + AI unified view</div>
           </div>
           <div className="bg-slate-900/30 border border-white/10 rounded-xl p-4">
-            <div className="text-emerald-400 font-semibold mb-1">Claude 4.5</div>
-            <div className="text-xs text-slate-400">AI coaching engine</div>
+            <div className="text-purple-400 font-semibold mb-1">Dual-Side Audio</div>
+            <div className="text-xs text-slate-400">Both speakers identified</div>
           </div>
           <div className="bg-slate-900/30 border border-white/10 rounded-xl p-4">
-            <div className="text-purple-400 font-semibold mb-1">Auto-Save</div>
-            <div className="text-xs text-slate-400">Full call records</div>
+            <div className="text-amber-400 font-semibold mb-1">Live AI Coach</div>
+            <div className="text-xs text-slate-400">Real-time suggestions</div>
           </div>
         </div>
 
