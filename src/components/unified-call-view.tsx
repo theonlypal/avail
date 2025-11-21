@@ -393,12 +393,12 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
   // Prevent hydration mismatch by not rendering until client-side
   if (!isMounted) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
         <div className="text-center space-y-6 p-8">
-          <div className="w-32 h-32 mx-auto bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center shadow-2xl animate-pulse">
-            <Phone className="h-16 w-16 text-white" />
+          <div className="w-32 h-32 mx-auto bg-gradient-to-br from-blue-500/20 to-cyan-600/20 backdrop-blur-xl border border-cyan-500/30 rounded-3xl flex items-center justify-center shadow-2xl shadow-cyan-500/20 animate-pulse">
+            <Phone className="h-16 w-16 text-cyan-400" />
           </div>
-          <div>
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
             <h3 className="text-2xl font-bold text-white mb-2">Loading Call Interface...</h3>
             <p className="text-slate-400">Preparing real-time transcription</p>
           </div>
@@ -409,12 +409,12 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
 
   if (!isCallActive) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
         <div className="text-center space-y-6 p-8">
-          <div className="w-32 h-32 mx-auto bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-2xl">
-            <Phone className="w-16 h-16 text-white" />
+          <div className="w-32 h-32 mx-auto bg-gradient-to-br from-emerald-500/20 to-green-600/20 backdrop-blur-xl border border-emerald-500/30 rounded-3xl flex items-center justify-center shadow-2xl shadow-emerald-500/20">
+            <Phone className="w-16 h-16 text-emerald-400" />
           </div>
-          <div>
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
             <h2 className="text-3xl font-bold text-white mb-2">Initializing Call...</h2>
             <p className="text-slate-300 text-lg">{lead.name}</p>
             <p className="text-slate-400">{lead.phone}</p>
@@ -425,28 +425,52 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Header */}
-      <div className="p-6 border-b border-slate-700 bg-slate-900/50 backdrop-blur">
+      <div className="p-6 border-b border-white/10 bg-white/5 backdrop-blur-xl">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+              <span className="relative flex h-4 w-4">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 shadow-lg shadow-emerald-500/50"></span>
               </span>
-              LIVE CALL - {lead.name}
+              LIVE CALL
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">
+                {lead.name}
+              </span>
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
-              {lead.business_type && `${lead.business_type} • `}
-              {lead.score && `Score: ${lead.score}/100 • `}
-              {lead.rating && `⭐ ${lead.rating}`}
+            <p className="text-slate-400 text-sm mt-1.5 flex items-center gap-2">
+              {lead.business_type && (
+                <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 rounded-md text-blue-400 text-xs">
+                  {lead.business_type}
+                </span>
+              )}
+              {lead.score && (
+                <span className="px-2 py-0.5 bg-purple-500/10 border border-purple-500/30 rounded-md text-purple-400 text-xs">
+                  Score: {lead.score}/100
+                </span>
+              )}
+              {lead.rating && (
+                <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded-md text-amber-400 text-xs">
+                  ⭐ {lead.rating}
+                </span>
+              )}
             </p>
           </div>
           <div className="text-right">
-            <div className="text-3xl font-mono text-white">{formatDuration(callDuration)}</div>
-            <div className="text-xs text-slate-400">
-              {callStatus === 'active' ? 'Recording' : 'Call Ended'}
+            <div className="text-3xl font-mono font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
+              {formatDuration(callDuration)}
+            </div>
+            <div className="text-xs text-slate-400 mt-1">
+              {callStatus === 'active' ? (
+                <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-500/10 border border-red-500/30 rounded-full">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  Recording
+                </span>
+              ) : (
+                'Call Ended'
+              )}
             </div>
           </div>
         </div>
@@ -454,21 +478,39 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
 
       {/* Main Unified Transcript */}
       <div className="flex-1 p-6 overflow-hidden">
-        <div className="h-full bg-slate-800/50 rounded-xl p-6 flex flex-col backdrop-blur border border-white/10">
-          <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-700">
+        <div className="h-full bg-white/5 backdrop-blur-2xl rounded-2xl p-6 flex flex-col border border-white/10 shadow-2xl">
+          <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
             <div>
-              <h2 className="text-white font-semibold text-lg">Unified Live Transcript</h2>
-              <p className="text-xs text-slate-400">
-                <span className="text-cyan-400">You (Mic)</span> • <span className="text-cyan-300">You (Call)</span> • <span className="text-purple-400">Lead</span> • <span className="text-amber-400">AI Coach</span>
+              <h2 className="text-white font-bold text-lg flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-cyan-400" />
+                Unified Live Transcript
+              </h2>
+              <p className="text-xs text-slate-400 mt-1 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan-500/10 border border-cyan-500/30 rounded-md">
+                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                  You (Mic)
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan-400/10 border border-cyan-400/30 rounded-md">
+                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-300" />
+                  You (Call)
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-500/10 border border-purple-500/30 rounded-md">
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                  Lead
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded-md">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                  AI Coach
+                </span>
               </p>
             </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={togglePause}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`px-4 py-2 rounded-xl text-xs font-medium transition-all backdrop-blur-xl ${
                   isPaused
-                    ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/50'
-                    : 'bg-purple-500/20 text-purple-300 border border-purple-500/50'
+                    ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/50 hover:bg-yellow-500/30 shadow-lg shadow-yellow-500/20'
+                    : 'bg-purple-500/20 text-purple-300 border border-purple-500/50 hover:bg-purple-500/30 shadow-lg shadow-purple-500/20'
                 }`}
               >
                 {isPaused ? (
@@ -515,22 +557,22 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
                 >
                   {/* Lead avatar on left */}
                   {isLead && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-2xl bg-purple-500/10 backdrop-blur-xl border border-purple-500/30 flex items-center justify-center shadow-lg shadow-purple-500/20">
                       <UserCircle2 className="h-5 w-5 text-purple-400" />
                     </div>
                   )}
 
                   {/* Message bubble */}
                   <div
-                    className={`max-w-[75%] ${
+                    className={`max-w-[75%] backdrop-blur-xl shadow-lg ${
                       entry.speaker === 'agent-mic'
-                        ? 'bg-cyan-500/10 border-cyan-500/30'
+                        ? 'bg-cyan-500/10 border-cyan-500/30 shadow-cyan-500/10'
                         : entry.speaker === 'agent-call'
-                        ? 'bg-cyan-400/10 border-cyan-400/30'
+                        ? 'bg-cyan-400/10 border-cyan-400/30 shadow-cyan-400/10'
                         : entry.speaker === 'lead'
-                        ? 'bg-purple-500/10 border-purple-500/30'
-                        : 'bg-amber-500/10 border-amber-500/30'
-                    } border rounded-xl p-3`}
+                        ? 'bg-purple-500/10 border-purple-500/30 shadow-purple-500/10'
+                        : 'bg-amber-500/10 border-amber-500/30 shadow-amber-500/10'
+                    } border rounded-2xl p-4`}
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <span
@@ -560,18 +602,18 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
 
                   {/* Agent/AI avatars on right */}
                   {entry.speaker === 'agent-mic' && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center">
-                      <Mic className="h-4 w-4 text-cyan-400" />
+                    <div className="flex-shrink-0 w-10 h-10 rounded-2xl bg-cyan-500/10 backdrop-blur-xl border border-cyan-500/30 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                      <Mic className="h-5 w-5 text-cyan-400" />
                     </div>
                   )}
                   {entry.speaker === 'agent-call' && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-400/20 border border-cyan-400/30 flex items-center justify-center">
-                      <Phone className="h-4 w-4 text-cyan-300" />
+                    <div className="flex-shrink-0 w-10 h-10 rounded-2xl bg-cyan-400/10 backdrop-blur-xl border border-cyan-400/30 flex items-center justify-center shadow-lg shadow-cyan-400/20">
+                      <Phone className="h-5 w-5 text-cyan-300" />
                     </div>
                   )}
                   {entry.speaker === 'ai-coach' && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
-                      <Bot className="h-4 w-4 text-amber-400" />
+                    <div className="flex-shrink-0 w-10 h-10 rounded-2xl bg-amber-500/10 backdrop-blur-xl border border-amber-500/30 flex items-center justify-center shadow-lg shadow-amber-500/20">
+                      <Bot className="h-5 w-5 text-amber-400" />
                     </div>
                   )}
                 </div>
@@ -580,38 +622,38 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
 
             {/* Current mic text (streaming) */}
             {currentMicText && (
-              <div className="flex gap-3 justify-end">
-                <div className="max-w-[75%] bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-3">
+              <div className="flex gap-3 justify-end animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="max-w-[75%] bg-cyan-500/10 backdrop-blur-xl border border-cyan-500/30 rounded-2xl p-4 shadow-lg shadow-cyan-500/20">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs font-medium text-cyan-400">You (Mic)</span>
-                    <div className="flex items-center gap-1">
-                      <div className="w-1 h-1 bg-cyan-400 rounded-full animate-pulse"></div>
-                      <span className="text-[10px] text-cyan-400">Speaking...</span>
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-cyan-500/20 rounded-full">
+                      <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse"></div>
+                      <span className="text-[10px] text-cyan-400 font-medium">Speaking...</span>
                     </div>
                   </div>
-                  <p className="text-sm text-cyan-200 leading-relaxed">{currentMicText}</p>
+                  <p className="text-sm text-cyan-100 leading-relaxed">{currentMicText}</p>
                 </div>
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center">
-                  <Mic className="h-4 w-4 text-cyan-400 animate-pulse" />
+                <div className="flex-shrink-0 w-10 h-10 rounded-2xl bg-cyan-500/10 backdrop-blur-xl border border-cyan-500/30 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                  <Mic className="h-5 w-5 text-cyan-400 animate-pulse" />
                 </div>
               </div>
             )}
 
             {/* Current AI text (streaming) */}
             {currentAiText && (
-              <div className="flex gap-3 justify-end">
-                <div className="max-w-[75%] bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+              <div className="flex gap-3 justify-end animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="max-w-[75%] bg-amber-500/10 backdrop-blur-xl border border-amber-500/30 rounded-2xl p-4 shadow-lg shadow-amber-500/20">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs font-medium text-amber-400">AI Coach</span>
-                    <div className="flex items-center gap-1">
-                      <div className="w-1 h-1 bg-amber-400 rounded-full animate-pulse"></div>
-                      <span className="text-[10px] text-amber-400">Suggesting...</span>
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-500/20 rounded-full">
+                      <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"></div>
+                      <span className="text-[10px] text-amber-400 font-medium">Suggesting...</span>
                     </div>
                   </div>
-                  <p className="text-sm text-amber-200 leading-relaxed">{currentAiText}</p>
+                  <p className="text-sm text-amber-100 leading-relaxed">{currentAiText}</p>
                 </div>
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-amber-400 animate-pulse" />
+                <div className="flex-shrink-0 w-10 h-10 rounded-2xl bg-amber-500/10 backdrop-blur-xl border border-amber-500/30 flex items-center justify-center shadow-lg shadow-amber-500/20">
+                  <Bot className="h-5 w-5 text-amber-400 animate-pulse" />
                 </div>
               </div>
             )}
@@ -620,23 +662,23 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
           </div>
 
           {/* Footer Stats */}
-          <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-700">
-            <div className="flex items-center gap-4 text-xs">
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-cyan-500/50" />
-                <span className="text-slate-500">You: {transcript.filter(t => t.speaker === 'agent-mic' || t.speaker === 'agent-call').length}</span>
+          <div className="flex items-center justify-between pt-4 mt-4 border-t border-white/10">
+            <div className="flex items-center gap-3 text-xs">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/5 backdrop-blur-xl border border-cyan-500/20 rounded-lg">
+                <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/50" />
+                <span className="text-cyan-400 font-medium">You: {transcript.filter(t => t.speaker === 'agent-mic' || t.speaker === 'agent-call').length}</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-purple-500/50" />
-                <span className="text-slate-500">Lead: {transcript.filter(t => t.speaker === 'lead').length}</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/5 backdrop-blur-xl border border-purple-500/20 rounded-lg">
+                <div className="w-2 h-2 rounded-full bg-purple-400 shadow-lg shadow-purple-400/50" />
+                <span className="text-purple-400 font-medium">Lead: {transcript.filter(t => t.speaker === 'lead').length}</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-amber-500/50" />
-                <span className="text-slate-500">AI: {transcript.filter(t => t.speaker === 'ai-coach').length}</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/5 backdrop-blur-xl border border-amber-500/20 rounded-lg">
+                <div className="w-2 h-2 rounded-full bg-amber-400 shadow-lg shadow-amber-400/50" />
+                <span className="text-amber-400 font-medium">AI: {transcript.filter(t => t.speaker === 'ai-coach').length}</span>
               </div>
             </div>
-            <span className="text-[10px] text-slate-600">
-              Call SID: {callSid.slice(-8)}
+            <span className="text-[10px] text-slate-500 font-mono px-2 py-1 bg-white/5 rounded-md border border-white/10">
+              {callSid.slice(-8)}
             </span>
           </div>
 
@@ -646,29 +688,29 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Quick notes during call..."
-              className="w-full h-16 bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 resize-none"
+              className="w-full h-20 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 resize-none transition-all"
             />
           </div>
         </div>
       </div>
 
       {/* Bottom Controls */}
-      <div className="p-6 border-t border-slate-700 bg-slate-900/50 backdrop-blur">
+      <div className="p-6 border-t border-white/10 bg-white/5 backdrop-blur-xl">
         <div className="flex items-center justify-between">
           <div className="flex gap-3">
             <button
               onClick={endCall}
-              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+              className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl font-semibold transition-all shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/50 flex items-center gap-2 border border-red-500/50"
             >
               <PhoneOff className="w-5 h-5" />
               End Call
             </button>
             <button
               onClick={() => setIsMuted(!isMuted)}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2 ${
+              className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 backdrop-blur-xl border ${
                 isMuted
-                  ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
-                  : 'bg-slate-700 hover:bg-slate-600 text-white'
+                  ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border-yellow-500/50 shadow-lg shadow-yellow-500/20'
+                  : 'bg-white/10 hover:bg-white/20 text-white border-white/20 shadow-lg'
               }`}
             >
               {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
@@ -676,12 +718,17 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
             </button>
           </div>
 
-          <div className="flex items-center gap-6">
-            <div className="text-sm text-slate-400">
-              <span className="text-green-400 font-mono font-semibold">~707ms</span> total latency
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 backdrop-blur-xl border border-emerald-500/30 rounded-xl">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-lg shadow-emerald-400/50" />
+              <span className="text-xs text-slate-400">
+                <span className="text-emerald-400 font-mono font-semibold">~707ms</span> latency
+              </span>
             </div>
-            <div className="text-sm text-slate-400">
-              <span className="text-green-400 font-semibold">{transcript.length}</span> messages
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 backdrop-blur-xl border border-blue-500/30 rounded-xl">
+              <span className="text-xs text-slate-400">
+                <span className="text-blue-400 font-semibold">{transcript.length}</span> messages
+              </span>
             </div>
           </div>
         </div>
