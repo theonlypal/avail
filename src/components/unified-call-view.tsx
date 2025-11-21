@@ -355,10 +355,13 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
   }, []);
 
   /**
-   * Auto-start microphone capture when component mounts
+   * Auto-start microphone capture when component mounts (client-side only)
    */
   useEffect(() => {
-    startCall();
+    // Only start call on client-side after component is mounted
+    if (typeof window !== 'undefined') {
+      startCall();
+    }
   }, []);
 
   if (!isCallActive) {
