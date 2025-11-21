@@ -157,45 +157,24 @@ export default function TeamPage() {
               </div>
               <Progress value={usage} className="h-2" />
               <p className="mt-3 text-xs text-slate-400">
-                Daily refresh scheduled at 9:00 AM PT. Upgrade to PRO+ for 5k leads/month.
+                Current tier: {team.subscription_tier} plan. Contact us to discuss your growth needs.
               </p>
             </div>
           </div>
 
-          {/* Wins This Week */}
+          {/* Team Activity */}
           <div className="relative rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-green-500/20 p-2">
                 <Award className="h-5 w-5 text-green-400" />
               </div>
-              <h3 className="text-xl font-semibold">Wins This Week</h3>
+              <h3 className="text-xl font-semibold">Team Activity</h3>
             </div>
 
-            <div className="space-y-3">
-              <div className="rounded-xl bg-white/[0.03] border border-white/10 p-4">
-                <div className="flex items-start gap-3">
-                  <Zap className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-slate-300">
-                    Zach closed 3 med spas with AI receptionist play.
-                  </p>
-                </div>
-              </div>
-              <div className="rounded-xl bg-white/[0.03] border border-white/10 p-4">
-                <div className="flex items-start gap-3">
-                  <Zap className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-slate-300">
-                    Ryan launched 2 SMS drip campaigns.
-                  </p>
-                </div>
-              </div>
-              <div className="rounded-xl bg-white/[0.03] border border-white/10 p-4">
-                <div className="flex items-start gap-3">
-                  <Zap className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-slate-300">
-                    DC booked 5 demos from auto-repair segment.
-                  </p>
-                </div>
-              </div>
+            <div className="text-center py-8">
+              <p className="text-sm text-slate-400">
+                Team activity tracking coming soon
+              </p>
             </div>
           </div>
         </div>

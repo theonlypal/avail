@@ -3,14 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Map, MessagesSquare, Users, LayoutDashboard, Sparkles, Home, DollarSign } from "lucide-react";
+import { Map, MessagesSquare, Users, LayoutDashboard, Sparkles, Home, DollarSign, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { Team } from "@/types";
 
 const routes = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/dashboard", label: "Leadly.AI", icon: LayoutDashboard },
+  { href: "/leads", label: "Leadly.AI", icon: LayoutDashboard },
+  { href: "/test-dialer", label: "Test Dialer", icon: Phone },
   { href: "/demos", label: "Demos", icon: Sparkles },
   { href: "/analytics", label: "Analytics", icon: Map },
   { href: "/team", label: "Team", icon: Users },
@@ -29,9 +30,9 @@ export function Sidebar() {
   }, []);
 
   return (
-    <aside className="w-full border-b border-white/10 bg-slate-950/50 backdrop-blur-xl text-white">
-      <div className="max-w-full mx-auto px-6 py-4">
-        <div className="flex items-center justify-between gap-6">
+    <aside className="sticky top-0 z-50 w-full border-b border-white/10 bg-slate-950/95 backdrop-blur-xl text-white shadow-lg shadow-black/20">
+      <div className="max-w-full mx-auto px-6 py-3">
+        <div className="flex items-center justify-between gap-4">
           {/* Logo and Team Info */}
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-3">
@@ -50,13 +51,19 @@ export function Sidebar() {
           {/* Navigation */}
           <nav className="hidden lg:flex items-center gap-2 flex-1 justify-center">
             {routes.map((route) => {
-              const active = pathname.startsWith(route.href);
+              // Exact matching to prevent /leads from highlighting /demos, etc.
+              const active =
+                route.href.includes('#')
+                  ? false // Hash links like /#pricing never show as active
+                  : route.href === '/'
+                    ? pathname === '/' // Exact match for home
+                    : pathname === route.href || pathname.startsWith(route.href + '/'); // Exact or child routes only
               return (
                 <Link
                   key={route.href}
                   href={route.href}
                   className={cn(
-                    "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all",
+                    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all",
                     active
                       ? "bg-gradient-to-r from-blue-600/20 to-cyan-600/20 text-cyan-400 border border-cyan-500/30"
                       : "text-slate-400 hover:bg-white/5 hover:text-white"

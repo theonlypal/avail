@@ -190,7 +190,7 @@ export const PRICING_TIERS: Record<TierId, PricingTier> = {
     serviceSelectionType: 'pick',
     featuresUnlocked: 'regular',
     support: 'Standard support (email + business-hours chat)',
-    contractMinimum: 12,
+    contractMinimum: 3, // 3-month commitment (Zach's spec)
     features: [
       'Choose ANY 1 service',
       'Regular features only',
@@ -198,23 +198,23 @@ export const PRICING_TIERS: Record<TierId, PricingTier> = {
       'Standard workflows & automation',
       'Basic reporting',
       'Email & business-hours support',
-      '12-month minimum commitment',
+      '3-month minimum commitment',
+      '+$600/mo for 1-month commitment',
     ],
   },
   pro: {
     id: 'pro',
     name: 'AVAIL Pro',
     price: {
-      min: 2500,
-      max: 3000,
-      display: '$2,500 - $3,000',
+      min: 2997,
+      display: '$2,997',
     },
     setupFee: 1000,
     servicesIncluded: 2,
     serviceSelectionType: 'pick',
     featuresUnlocked: 'regular-plus',
     support: 'Priority support',
-    contractMinimum: 12,
+    contractMinimum: 3, // 3-month commitment (Zach's spec)
     recommended: true,
     features: [
       'Choose ANY 2 services',
@@ -223,23 +223,23 @@ export const PRICING_TIERS: Record<TierId, PricingTier> = {
       'Faster support response',
       'Minor customizations',
       'Quarterly optimization check-ins',
-      '12-month minimum commitment',
+      '3-month minimum commitment',
+      '+$600/mo for 1-month commitment',
     ],
   },
   premium: {
     id: 'premium',
     name: 'AVAIL Premium',
     price: {
-      min: 4000,
-      max: 4500,
-      display: '$4,000 - $4,500',
+      min: 4500,
+      display: '$4,500',
     },
     setupFee: 2000,
     servicesIncluded: 4,
     serviceSelectionType: 'pick',
     featuresUnlocked: 'all',
     support: 'Priority support + direct communication',
-    contractMinimum: 12,
+    contractMinimum: 3, // 3-month commitment (Zach's spec)
     features: [
       'Choose ANY 4 services',
       'ALL regular & premium features unlocked',
@@ -248,7 +248,8 @@ export const PRICING_TIERS: Record<TierId, PricingTier> = {
       'Monthly optimization & reporting',
       'Advanced AI models unlocked',
       'Full workflow customization',
-      '12-month minimum commitment',
+      '3-month minimum commitment',
+      '+$600/mo for 1-month commitment',
     ],
   },
   'full-suite': {
@@ -256,15 +257,14 @@ export const PRICING_TIERS: Record<TierId, PricingTier> = {
     name: 'AVAIL Full Suite',
     price: {
       min: 6000,
-      max: 7000,
-      display: '$6,000 - $7,000',
+      display: '$6,000',
     },
     setupFee: 2000,
     servicesIncluded: 'all',
     serviceSelectionType: 'all',
     featuresUnlocked: 'all',
     support: 'Dedicated account manager',
-    contractMinimum: 12,
+    contractMinimum: 3, // 3-month commitment (Zach's spec)
     features: [
       'ALL 5 services included',
       'Every premium feature unlocked',
@@ -275,7 +275,8 @@ export const PRICING_TIERS: Record<TierId, PricingTier> = {
       'Brand-level social content + Sora AI',
       'Multi-location support',
       'All integrations connected',
-      '12-month minimum commitment',
+      '3-month minimum commitment',
+      '+$600/mo for 1-month commitment',
     ],
   },
   enterprise: {
@@ -291,7 +292,7 @@ export const PRICING_TIERS: Record<TierId, PricingTier> = {
     serviceSelectionType: 'custom',
     featuresUnlocked: 'all',
     support: '24/7 support + engineering team',
-    contractMinimum: 24,
+    contractMinimum: 3, // 3-month commitment (Zach's spec)
     features: [
       'Everything in Full Suite',
       'Custom business management app',
@@ -302,7 +303,8 @@ export const PRICING_TIERS: Record<TierId, PricingTier> = {
       'Full enterprise integration layer',
       'Custom APIs & dashboards',
       'Dedicated engineering support',
-      '24-month minimum commitment',
+      '3-month minimum commitment',
+      '+$600/mo for 1-month commitment',
     ],
   },
 };

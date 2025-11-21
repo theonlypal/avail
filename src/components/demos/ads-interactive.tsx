@@ -4,10 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, TrendingUp, Target, DollarSign } from "lucide-react";
+import { formatCurrency } from "@/lib/utils/currency";
 
 interface AdsInteractiveProps {
   demoData: any;
 }
+
+// Helper to format values that might already have $ or be numbers
+const ensureCurrency = (value: any): string => {
+  if (!value && value !== 0) return '$0.00';
+  const str = String(value);
+  if (str.startsWith('$')) return str;
+  const num = parseFloat(str);
+  return isNaN(num) ? str : formatCurrency(num);
+};
 
 export function AdsInteractive({ demoData }: AdsInteractiveProps) {
   const googleAds = demoData.googleAds || {};
@@ -48,7 +58,7 @@ export function AdsInteractive({ demoData }: AdsInteractiveProps) {
               </div>
               <div className="p-4 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-lg border border-white/10 text-center hover:border-cyan-500/30 transition-all">
                 <div className="text-2xl font-bold text-blue-400">
-                  ${googleAds.avgCostPerLead}
+                  {ensureCurrency(googleAds.avgCostPerLead)}
                 </div>
                 <div className="text-xs text-slate-400">Cost Per Lead</div>
               </div>
@@ -127,7 +137,7 @@ export function AdsInteractive({ demoData }: AdsInteractiveProps) {
               </div>
               <div className="p-4 bg-gradient-to-br from-orange-500/10 to-red-500/10 rounded-lg border border-white/10 text-center hover:border-orange-500/30 transition-all">
                 <div className="text-2xl font-bold text-orange-400">
-                  ${facebookAds.avgCostPerLead}
+                  {ensureCurrency(facebookAds.avgCostPerLead)}
                 </div>
                 <div className="text-xs text-slate-400">Cost Per Lead</div>
               </div>
@@ -170,7 +180,7 @@ export function AdsInteractive({ demoData }: AdsInteractiveProps) {
                       <div className="text-slate-400">Leads</div>
                     </div>
                     <div>
-                      <div className="font-semibold text-white">${campaign.costPerLead}</div>
+                      <div className="font-semibold text-white">{ensureCurrency(campaign.costPerLead)}</div>
                       <div className="text-slate-400">Cost/Lead</div>
                     </div>
                     <div>

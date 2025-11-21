@@ -1,0 +1,437 @@
+'use client';
+
+/**
+ * Social Media Management Demo - Session 4
+ *
+ * Features:
+ * - Content calendar view (month/week)
+ * - Scheduled posts across platforms (Facebook, Instagram, LinkedIn, Twitter)
+ * - Asset library for images/videos
+ * - AI caption generator
+ * - Performance metrics per post
+ */
+
+import { useState } from 'react';
+import { Calendar, Image, Sparkles, Facebook, Instagram, Linkedin, Twitter, Plus, Upload } from 'lucide-react';
+
+interface SocialPost {
+  id: string;
+  platform: 'facebook' | 'instagram' | 'linkedin' | 'twitter';
+  content: string;
+  scheduled_for: string;
+  status: 'draft' | 'scheduled' | 'published';
+  image_url?: string;
+  engagement?: {
+    likes: number;
+    comments: number;
+    shares: number;
+  };
+}
+
+interface Asset {
+  id: string;
+  type: 'image' | 'video';
+  url: string;
+  name: string;
+  uploaded_at: string;
+}
+
+export default function SocialMediaDemo() {
+  const [view, setView] = useState<'calendar' | 'posts' | 'assets' | 'generator'>('calendar');
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['facebook', 'instagram']);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [generatedCaption, setGeneratedCaption] = useState('');
+  const [generating, setGenerating] = useState(false);
+
+  // Sample posts data
+  const samplePosts: SocialPost[] = [
+    {
+      id: '1',
+      platform: 'facebook',
+      content: 'Spring special! Get 20% off all plumbing services this month. Book now and save! #Plumbing #HomeServices',
+      scheduled_for: new Date(Date.now() + 86400000).toISOString(),
+      status: 'scheduled',
+      image_url: 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400',
+    },
+    {
+      id: '2',
+      platform: 'instagram',
+      content: 'Behind the scenes: Our team fixing a complex pipe issue. We love what we do! 💪 #PlumberLife #Teamwork',
+      scheduled_for: new Date(Date.now() + 2 * 86400000).toISOString(),
+      status: 'scheduled',
+      image_url: 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?w=400',
+    },
+    {
+      id: '3',
+      platform: 'linkedin',
+      content: 'Industry insight: The importance of regular plumbing maintenance. Read our latest article.',
+      scheduled_for: new Date(Date.now() - 7 * 86400000).toISOString(),
+      status: 'published',
+      engagement: {
+        likes: 42,
+        comments: 8,
+        shares: 12,
+      },
+    },
+  ];
+
+  const sampleAssets: Asset[] = [
+    {
+      id: '1',
+      type: 'image',
+      url: 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400',
+      name: 'plumbing-tools.jpg',
+      uploaded_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+    },
+    {
+      id: '2',
+      type: 'image',
+      url: 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?w=400',
+      name: 'team-work.jpg',
+      uploaded_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+    },
+    {
+      id: '3',
+      type: 'image',
+      url: 'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?w=400',
+      name: 'bathroom-renovation.jpg',
+      uploaded_at: new Date(Date.now() - 1 * 86400000).toISOString(),
+    },
+  ];
+
+  const platformConfig = {
+    facebook: { icon: Facebook, color: 'text-blue-600', bg: 'bg-blue-100', name: 'Facebook' },
+    instagram: { icon: Instagram, color: 'text-pink-600', bg: 'bg-pink-100', name: 'Instagram' },
+    linkedin: { icon: Linkedin, color: 'text-blue-700', bg: 'bg-blue-100', name: 'LinkedIn' },
+    twitter: { icon: Twitter, color: 'text-sky-500', bg: 'bg-sky-100', name: 'Twitter' },
+  };
+
+  async function handleGenerateCaption() {
+    if (!aiPrompt.trim()) return;
+
+    setGenerating(true);
+    try {
+      // Simulate AI generation (in production this would call Claude API)
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      const captions = [
+        `✨ ${aiPrompt}\n\nWe're passionate about delivering exceptional service. Book your appointment today! #LocalBusiness #QualityService`,
+        `🔧 ${aiPrompt}\n\nYour trusted local experts. Fast, reliable, professional. Call us now! #Experts #TrustedService`,
+        `💙 ${aiPrompt}\n\nServing our community with pride for over 20 years. Let us help you today! #CommunityFirst #Experienced`,
+      ];
+
+      setGeneratedCaption(captions[Math.floor(Math.random() * captions.length)]);
+    } catch (error) {
+      console.error('Failed to generate caption:', error);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  const [posts] = useState<SocialPost[]>(samplePosts);
+  const [assets] = useState<Asset[]>(sampleAssets);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Social Media Manager</h1>
+          <p className="text-gray-600">Schedule posts, manage assets, and generate engaging content</p>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="flex gap-4 mb-8">
+          <button
+            onClick={() => setView('calendar')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-colors ${
+              view === 'calendar'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <Calendar className="w-5 h-5" />
+            Calendar
+          </button>
+          <button
+            onClick={() => setView('posts')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-colors ${
+              view === 'posts'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <Plus className="w-5 h-5" />
+            Posts
+          </button>
+          <button
+            onClick={() => setView('assets')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-colors ${
+              view === 'assets'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <Image className="w-5 h-5" />
+            Assets
+          </button>
+          <button
+            onClick={() => setView('generator')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-colors ${
+              view === 'generator'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <Sparkles className="w-5 h-5" />
+            AI Generator
+          </button>
+        </div>
+
+        {/* Calendar View */}
+        {view === 'calendar' && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Content Calendar</h2>
+
+            {/* Simple calendar grid */}
+            <div className="grid grid-cols-7 gap-4">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                <div key={day} className="text-center font-semibold text-gray-700 p-2">
+                  {day}
+                </div>
+              ))}
+
+              {Array.from({ length: 35 }).map((_, i) => {
+                const dayNum = i - 2; // Start from day -2 to fill the grid
+                const hasPost = dayNum === 1 || dayNum === 3 || dayNum === 15;
+
+                return (
+                  <div
+                    key={i}
+                    className={`border rounded-lg p-4 min-h-[120px] ${
+                      dayNum < 1 || dayNum > 30 ? 'bg-gray-50 text-gray-400' : 'bg-white'
+                    }`}
+                  >
+                    <div className="text-sm font-medium mb-2">
+                      {dayNum > 0 && dayNum <= 30 ? dayNum : ''}
+                    </div>
+
+                    {hasPost && dayNum > 0 && dayNum <= 30 && (
+                      <div className="space-y-1">
+                        {dayNum === 1 && (
+                          <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                            <Facebook className="w-3 h-3 inline mr-1" />
+                            Spring Special
+                          </div>
+                        )}
+                        {dayNum === 3 && (
+                          <div className="text-xs bg-pink-100 text-pink-800 px-2 py-1 rounded">
+                            <Instagram className="w-3 h-3 inline mr-1" />
+                            Behind the scenes
+                          </div>
+                        )}
+                        {dayNum === 15 && (
+                          <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                            <Linkedin className="w-3 h-3 inline mr-1" />
+                            Industry insight
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Posts View */}
+        {view === 'posts' && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Scheduled Posts</h2>
+
+            <div className="space-y-4">
+              {posts.map(post => {
+                const PlatformIcon = platformConfig[post.platform].icon;
+                return (
+                  <div key={post.id} className="border rounded-lg p-4 flex gap-4">
+                    {post.image_url && (
+                      <img
+                        src={post.image_url}
+                        alt="Post preview"
+                        className="w-24 h-24 object-cover rounded"
+                      />
+                    )}
+
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-sm ${platformConfig[post.platform].bg} ${platformConfig[post.platform].color}`}>
+                          <PlatformIcon className="w-4 h-4" />
+                          {platformConfig[post.platform].name}
+                        </span>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          post.status === 'published' ? 'bg-green-100 text-green-800' :
+                          post.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {post.status}
+                        </span>
+                      </div>
+
+                      <p className="text-gray-700 mb-2">{post.content}</p>
+
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <span>
+                          {post.status === 'published' ? 'Published' : 'Scheduled for'}{' '}
+                          {new Date(post.scheduled_for).toLocaleDateString()}
+                        </span>
+
+                        {post.engagement && (
+                          <>
+                            <span>👍 {post.engagement.likes}</span>
+                            <span>💬 {post.engagement.comments}</span>
+                            <span>🔄 {post.engagement.shares}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button className="mt-6 flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <Plus className="w-5 h-5" />
+              Create New Post
+            </button>
+          </div>
+        )}
+
+        {/* Assets View */}
+        {view === 'assets' && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Asset Library</h2>
+              <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <Upload className="w-4 h-4" />
+                Upload Asset
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {assets.map(asset => (
+                <div key={asset.id} className="border rounded-lg p-2 hover:shadow-md transition-shadow cursor-pointer">
+                  <img
+                    src={asset.url}
+                    alt={asset.name}
+                    className="w-full h-32 object-cover rounded mb-2"
+                  />
+                  <div className="text-sm font-medium text-gray-900 truncate">{asset.name}</div>
+                  <div className="text-xs text-gray-500">
+                    {new Date(asset.uploaded_at).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+
+              {/* Placeholder cards */}
+              <div className="border-2 border-dashed rounded-lg p-2 flex items-center justify-center h-40 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                <div className="text-center text-gray-400">
+                  <Upload className="w-8 h-8 mx-auto mb-2" />
+                  <div className="text-sm">Upload Image</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* AI Generator View */}
+        {view === 'generator' && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">AI Caption Generator</h2>
+
+            <div className="space-y-6">
+              {/* Platform Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Platforms
+                </label>
+                <div className="flex gap-3">
+                  {Object.entries(platformConfig).map(([key, config]) => {
+                    const PlatformIcon = config.icon;
+                    const isSelected = selectedPlatforms.includes(key);
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          setSelectedPlatforms(prev =>
+                            isSelected
+                              ? prev.filter(p => p !== key)
+                              : [...prev, key]
+                          );
+                        }}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-colors ${
+                          isSelected
+                            ? `${config.bg} ${config.color} border-current`
+                            : 'border-gray-300 text-gray-600 hover:border-gray-400'
+                        }`}
+                      >
+                        <PlatformIcon className="w-5 h-5" />
+                        {config.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Prompt Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  What would you like to post about?
+                </label>
+                <textarea
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder="E.g., Announce our new emergency service available 24/7"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-500"
+                  rows={4}
+                />
+              </div>
+
+              {/* Generate Button */}
+              <button
+                onClick={handleGenerateCaption}
+                disabled={generating || !aiPrompt.trim()}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                <Sparkles className={`w-5 h-5 ${generating ? 'animate-spin' : ''}`} />
+                {generating ? 'Generating...' : 'Generate Caption with AI'}
+              </button>
+
+              {/* Generated Caption */}
+              {generatedCaption && (
+                <div className="border-2 border-blue-200 rounded-lg p-6 bg-blue-50">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Sparkles className="w-5 h-5 text-blue-600" />
+                    <span className="font-semibold text-blue-900">AI Generated Caption</span>
+                  </div>
+                  <p className="text-gray-800 mb-4 whitespace-pre-wrap">{generatedCaption}</p>
+                  <div className="flex gap-3">
+                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                      Use This Caption
+                    </button>
+                    <button
+                      onClick={handleGenerateCaption}
+                      className="px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                    >
+                      Generate Another
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

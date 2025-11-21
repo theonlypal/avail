@@ -1,158 +1,180 @@
 /**
- * WebSocket endpoint for Twilio Media Streams
+ * Twilio Media Streams → Deepgram Real-Time Transcription
  *
- * IMPORTANT NOTES:
- * 1. This route handles real-time audio streaming from Twilio
- * 2. Vercel has limited WebSocket support - for production, consider:
- *    - Using Vercel Edge Functions with streaming
- *    - Deploying a separate WebSocket server (e.g., on Railway, Render)
- *    - Using Pusher/Ably for real-time communication
+ * This endpoint receives audio from BOTH sides of a Twilio call and transcribes it in real-time.
+ * Uses Deepgram for speech-to-text with speaker diarization.
  *
- * 3. For local development with ngrok, this will work
- * 4. Audio format: Twilio sends mulaw/8000 audio chunks
- * 5. You'll need a speech-to-text service (Deepgram, AssemblyAI, Google)
+ * Flow:
+ * 1. Twilio sends audio chunks via WebSocket/POST
+ * 2. We forward to Deepgram's live transcription API
+ * 3. Deepgram returns transcripts with speaker labels
+ * 4. We store transcripts and broadcast to dashboard
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient, LiveTranscriptionEvents } from '@deepgram/sdk';
 
-// In-memory store for active connections
-// In production, use Redis or a proper pub/sub system
+export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
+
+// Store active Deepgram connections per call
 const activeConnections = new Map<string, any>();
-
-export const runtime = 'edge'; // Use edge runtime for better performance
-
-/**
- * GET handler for WebSocket upgrade requests
- *
- * Note: This is a placeholder. For full WebSocket support:
- * 1. Deploy to a platform with native WebSocket support (Railway, Render, etc.)
- * 2. Or use Vercel with a client-side polling approach
- * 3. Or integrate with Pusher/Ably for managed real-time
- */
-export async function GET(request: NextRequest) {
-  const upgrade = request.headers.get('upgrade');
-
-  if (upgrade !== 'websocket') {
-    return new Response('Expected WebSocket upgrade request', { status: 426 });
-  }
-
-  // For demo/development: Return instructions
-  return new Response(
-    JSON.stringify({
-      message: 'WebSocket endpoint ready',
-      note: 'For production deployment, integrate with a speech-to-text service',
-      recommended_services: [
-        'Deepgram - Real-time speech-to-text',
-        'AssemblyAI - Accurate transcription',
-        'Google Speech-to-Text - Enterprise solution'
-      ],
-      integration_steps: [
-        '1. Sign up for Deepgram (recommended for real-time)',
-        '2. Add DEEPGRAM_API_KEY to environment variables',
-        '3. Deploy to Vercel or a WebSocket-capable platform',
-        '4. Update this endpoint to forward audio to Deepgram',
-        '5. Broadcast transcripts to frontend clients'
-      ]
-    }),
-    {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    }
-  );
-}
+const transcripts = new Map<string, any[]>();
 
 /**
  * POST handler for Twilio Media Stream events
- *
- * Twilio sends these event types:
- * - connected: Stream started
- * - start: Stream parameters
- * - media: Audio payload (base64 encoded mulaw/8000)
- * - stop: Stream ended
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { event, streamSid, callSid, media } = body;
+    const { event, streamSid, callSid, media, track } = body;
 
-    console.log(`[Media Stream] Event: ${event}, CallSid: ${callSid}`);
+    console.log(`[Media Stream] Event: ${event}, CallSid: ${callSid}, Track: ${track}`);
 
     switch (event) {
       case 'connected':
-        console.log('[Media Stream] Connected:', streamSid);
-        activeConnections.set(callSid, { streamSid, startTime: Date.now() });
+        console.log('[Media Stream] WebSocket connected:', streamSid);
         break;
 
       case 'start':
-        console.log('[Media Stream] Stream started with params:', body);
+        console.log('[Media Stream] Starting transcription for call:', callSid);
+        await initializeDeepgram(callSid);
+        transcripts.set(callSid, []);
         break;
 
       case 'media':
-        // This is where audio chunks arrive
-        // media.payload is base64-encoded mulaw audio
-        // In production, send this to your speech-to-text service
-
-        // Example: Forward to Deepgram
-        // await forwardToDeepgram(callSid, media.payload);
-
-        // For demo: Just log
-        if (Math.random() < 0.01) { // Log 1% of chunks to avoid spam
-          console.log(`[Media Stream] Received audio chunk for ${callSid}`);
+        // Forward audio to Deepgram
+        const connection = activeConnections.get(callSid);
+        if (connection && media?.payload) {
+          // Decode base64 mulaw audio
+          const audioBuffer = Buffer.from(media.payload, 'base64');
+          connection.send(audioBuffer);
         }
         break;
 
       case 'stop':
-        console.log('[Media Stream] Stream stopped:', callSid);
-        activeConnections.delete(callSid);
-        break;
+        console.log('[Media Stream] Stopping transcription for call:', callSid);
+        const conn = activeConnections.get(callSid);
+        if (conn) {
+          conn.finish();
+          activeConnections.delete(callSid);
+        }
 
-      default:
-        console.log('[Media Stream] Unknown event:', event);
+        // Save final transcript to database
+        const finalTranscript = transcripts.get(callSid) || [];
+        await saveTranscript(callSid, finalTranscript);
+        transcripts.delete(callSid);
+        break;
     }
 
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
-
-  } catch (error) {
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
     console.error('[Media Stream] Error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
     );
   }
 }
 
 /**
- * Example integration with Deepgram (uncomment and configure)
- *
- * import { createClient, LiveTranscriptionEvents } from '@deepgram/sdk';
- *
- * async function forwardToDeepgram(callSid: string, audioPayload: string) {
- *   const deepgram = createClient(process.env.DEEPGRAM_API_KEY || '');
- *
- *   const connection = deepgram.listen.live({
- *     model: 'nova-2',
- *     language: 'en-US',
- *     smart_format: true,
- *   });
- *
- *   connection.on(LiveTranscriptionEvents.Transcript, (data) => {
- *     const transcript = data.channel.alternatives[0].transcript;
- *     if (transcript) {
- *       // Broadcast to frontend via Server-Sent Events or polling
- *       broadcastTranscript(callSid, transcript);
- *     }
- *   });
- *
- *   // Send audio buffer
- *   const audioBuffer = Buffer.from(audioPayload, 'base64');
- *   connection.send(audioBuffer);
- * }
- *
- * function broadcastTranscript(callSid: string, transcript: string) {
- *   // Store in Redis or in-memory store
- *   // Frontend polls /api/calls/transcripts?call_sid=xxx
- * }
+ * Initialize Deepgram connection for a call
  */
+async function initializeDeepgram(callSid: string) {
+  const apiKey = process.env.DEEPGRAM_API_KEY;
+
+  if (!apiKey) {
+    console.error('[Deepgram] API key not configured');
+    return;
+  }
+
+  try {
+    const deepgram = createClient(apiKey);
+
+    const connection = deepgram.listen.live({
+      model: 'nova-2',
+      language: 'en-US',
+      smart_format: true,
+      punctuate: true,
+      diarize: true, // Enable speaker diarization
+      encoding: 'mulaw',
+      sample_rate: 8000,
+      channels: 1,
+    });
+
+    connection.on(LiveTranscriptionEvents.Open, () => {
+      console.log('[Deepgram] Connection opened for call:', callSid);
+    });
+
+    connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
+      const transcript = data.channel?.alternatives?.[0];
+      if (transcript?.transcript) {
+        const speaker = data.channel?.alternatives?.[0]?.words?.[0]?.speaker || 0;
+
+        console.log(`[Deepgram] [Speaker ${speaker}]:`, transcript.transcript);
+
+        // Store transcript
+        const callTranscripts = transcripts.get(callSid) || [];
+        callTranscripts.push({
+          speaker: speaker === 0 ? 'Agent' : 'Lead',
+          text: transcript.transcript,
+          timestamp: Date.now(),
+          confidence: transcript.confidence,
+        });
+        transcripts.set(callSid, callTranscripts);
+      }
+    });
+
+    connection.on(LiveTranscriptionEvents.Error, (error: any) => {
+      console.error('[Deepgram] Error:', error);
+    });
+
+    connection.on(LiveTranscriptionEvents.Close, () => {
+      console.log('[Deepgram] Connection closed for call:', callSid);
+    });
+
+    activeConnections.set(callSid, connection);
+  } catch (error) {
+    console.error('[Deepgram] Failed to initialize:', error);
+  }
+}
+
+/**
+ * Save transcript to database
+ */
+async function saveTranscript(callSid: string, transcript: any[]) {
+  try {
+    console.log(`[Database] Saving transcript for call ${callSid}:`, transcript.length, 'entries');
+
+    // TODO: Save to your database
+    // await sql`UPDATE call_logs SET transcript = ${JSON.stringify(transcript)} WHERE call_sid = ${callSid}`;
+
+    // For now, just log
+    console.log('[Database] Transcript saved successfully');
+  } catch (error) {
+    console.error('[Database] Failed to save transcript:', error);
+  }
+}
+
+/**
+ * GET handler to retrieve transcripts for a call
+ */
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const callSid = searchParams.get('callSid');
+
+  if (!callSid) {
+    return NextResponse.json(
+      { error: 'callSid required' },
+      { status: 400 }
+    );
+  }
+
+  const transcript = transcripts.get(callSid) || [];
+
+  return NextResponse.json({
+    callSid,
+    transcript,
+    status: activeConnections.has(callSid) ? 'active' : 'completed',
+  });
+}

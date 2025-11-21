@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb, getDefaultTeamId } from '@/lib/db';
+import { neon } from '@neondatabase/serverless';
+import Database from 'better-sqlite3';
+import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+
+const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+function getSqliteDb(): Database.Database {
+  const DB_PATH = path.join(process.cwd(), 'data', 'leadly.db');
+  return new Database(DB_PATH);
+}
 
 /**
  * POST /api/calls/initiate
@@ -25,21 +35,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const db = getDb();
-    const teamId = getDefaultTeamId();
-
-    // Get the default member (TODO: Replace with actual authenticated user)
-    const member = db.prepare(`
-      SELECT id FROM team_members WHERE team_id = ? LIMIT 1
-    `).get(teamId) as { id: string } | undefined;
-
-    if (!member) {
-      return NextResponse.json(
-        { error: 'No team member found' },
-        { status: 404 }
-      );
-    }
-
     // Check if Twilio is configured
     const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
     const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
@@ -53,14 +48,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Get app URL for callbacks
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
-      : 'https://leadly-g67af3asj-rayan-pals-projects.vercel.app';
+      : 'http://localhost:3000');
 
     // REAL Twilio call - NO DEMO MODE
     try {
       const twilio = require('twilio');
       const client = twilio(twilioAccountSid, twilioAuthToken);
+
+      console.log('[Twilio] Initiating call to:', to_number, 'from:', twilioPhoneNumber);
 
       const call = await client.calls.create({
         to: to_number,
@@ -72,35 +69,56 @@ export async function POST(request: NextRequest) {
         record: true,
       });
 
-      // Create call log in database
-      const callId = uuidv4();
-      const now = new Date().toISOString();
+      console.log('[Twilio] Call created successfully. SID:', call.sid, 'Status:', call.status);
 
-      db.prepare(`
-        INSERT INTO call_logs (
-          id, lead_id, member_id, call_sid, status, direction, started_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(callId, lead_id, member.id, call.sid, 'initiated', 'outbound', now, now);
+      // Create call log in database (optional - skip if tables don't exist yet)
+      try {
+        const callId = uuidv4();
+        const now = new Date().toISOString();
+
+        if (IS_PRODUCTION && sql) {
+          // Try to insert into Postgres (might fail if table doesn't exist)
+          await sql`
+            INSERT INTO call_logs (id, lead_id, call_sid, status, direction, started_at, created_at)
+            VALUES (${callId}, ${lead_id}, ${call.sid}, ${'initiated'}, ${'outbound'}, ${now}, ${now})
+          `.catch(() => {
+            console.log('[DB] call_logs table does not exist yet, skipping log');
+          });
+        } else {
+          // SQLite
+          const db = getSqliteDb();
+          db.prepare(`
+            INSERT INTO call_logs (id, lead_id, call_sid, status, direction, started_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `).run(callId, lead_id, call.sid, 'initiated', 'outbound', now, now);
+        }
+      } catch (dbError) {
+        console.warn('[DB] Failed to log call, but call was initiated successfully:', dbError);
+      }
 
       return NextResponse.json({
         success: true,
-        call_id: callId,
         call_sid: call.sid,
         status: call.status,
+        message: `Call initiated to ${to_number}`,
       });
 
-    } catch (twilioError) {
-      console.error('Twilio API error:', twilioError);
+    } catch (twilioError: any) {
+      console.error('[Twilio] API error:', twilioError);
       return NextResponse.json(
-        { error: 'Failed to initiate call via Twilio', details: twilioError },
+        {
+          error: 'Failed to initiate call via Twilio',
+          details: twilioError.message || twilioError.toString(),
+          code: twilioError.code,
+        },
         { status: 500 }
       );
     }
 
-  } catch (error) {
-    console.error('Call initiation error:', error);
+  } catch (error: any) {
+    console.error('[Call initiation] Error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error.message },
       { status: 500 }
     );
   }
