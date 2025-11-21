@@ -8,9 +8,12 @@ import { initializePostgresSchema } from '@/lib/db';
 
 export async function GET() {
   try {
-    if (process.env.VERCEL !== '1') {
+    // Allow in production environments (Vercel or Railway)
+    const isProduction = process.env.VERCEL === '1' || process.env.RAILWAY_ENVIRONMENT === 'production';
+
+    if (!isProduction && process.env.NODE_ENV === 'development') {
       return NextResponse.json({
-        error: 'This endpoint only works in production (Vercel)',
+        error: 'This endpoint only works in production (Vercel/Railway)',
       }, { status: 400 });
     }
 
