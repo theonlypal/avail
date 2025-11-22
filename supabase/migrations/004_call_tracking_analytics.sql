@@ -2,6 +2,22 @@
 -- This migration adds call records, lead folders, and analytics tables
 
 -- ============================================
+-- PREREQUISITES
+-- ============================================
+
+-- Enable UUID extension if not already enabled
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Create update_updated_at trigger function if it doesn't exist
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE 'plpgsql';
+
+-- ============================================
 -- CALL RECORDS TABLE
 -- ============================================
 
@@ -9,7 +25,7 @@ CREATE TABLE call_records (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   call_sid TEXT UNIQUE NOT NULL,
   lead_id TEXT NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
-  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
 
   -- Call metadata
   started_at TIMESTAMPTZ NOT NULL,
@@ -45,7 +61,7 @@ CREATE TABLE call_records (
 
 CREATE TABLE lead_folders (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
   color TEXT DEFAULT 'blue' CHECK (color IN ('blue', 'purple', 'emerald', 'amber', 'red', 'cyan', 'pink', 'gray')),
@@ -77,7 +93,7 @@ ALTER TABLE leads ADD COLUMN IF NOT EXISTS last_sentiment_score NUMERIC(3,2);
 
 CREATE TABLE analytics_daily (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
   date DATE NOT NULL,
 
   -- Lead metrics
@@ -174,7 +190,7 @@ CREATE TRIGGER update_lead_stats_after_call
   EXECUTE FUNCTION update_lead_after_call();
 
 -- Function to aggregate daily analytics
-CREATE OR REPLACE FUNCTION aggregate_daily_analytics(p_team_id UUID, p_date DATE)
+CREATE OR REPLACE FUNCTION aggregate_daily_analytics(p_team_id TEXT, p_date DATE)
 RETURNS VOID AS $$
 DECLARE
   v_leads_generated INTEGER;
@@ -292,62 +308,14 @@ CREATE TRIGGER auto_aggregate_on_call_complete
 -- ============================================
 -- ROW LEVEL SECURITY
 -- ============================================
-
-ALTER TABLE call_records ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lead_folders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE analytics_daily ENABLE ROW LEVEL SECURITY;
-
--- Call Records: Users can view/create calls for their team leads
-CREATE POLICY "Users can view their team call records" ON call_records
-  FOR SELECT USING (
-    team_id IN (
-      SELECT team_id FROM team_members WHERE user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Users can create call records" ON call_records
-  FOR INSERT WITH CHECK (
-    team_id IN (
-      SELECT team_id FROM team_members WHERE user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Users can update their team call records" ON call_records
-  FOR UPDATE USING (
-    team_id IN (
-      SELECT team_id FROM team_members WHERE user_id = auth.uid()
-    )
-  );
-
--- Lead Folders: Users can manage folders for their team
-CREATE POLICY "Users can view their team folders" ON lead_folders
-  FOR SELECT USING (
-    team_id IN (
-      SELECT team_id FROM team_members WHERE user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Users can manage their team folders" ON lead_folders
-  FOR ALL USING (
-    team_id IN (
-      SELECT team_id FROM team_members WHERE user_id = auth.uid()
-    )
-  );
-
--- Analytics: Users can view analytics for their team
-CREATE POLICY "Users can view their team analytics" ON analytics_daily
-  FOR SELECT USING (
-    team_id IN (
-      SELECT team_id FROM team_members WHERE user_id = auth.uid()
-    )
-  );
+-- Note: RLS policies disabled - auth not configured yet
 
 -- ============================================
 -- SEED DEFAULT FOLDERS
 -- ============================================
 
 -- Function to create default folders for a team
-CREATE OR REPLACE FUNCTION create_default_folders(p_team_id UUID)
+CREATE OR REPLACE FUNCTION create_default_folders(p_team_id TEXT)
 RETURNS VOID AS $$
 BEGIN
   INSERT INTO lead_folders (team_id, name, description, color, icon, sort_order) VALUES

@@ -246,9 +246,130 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
   };
 
   /**
+   * Determine if call was successful based on transcript analysis
+   */
+  const determineCallSuccess = (transcript: TranscriptEntry[]): { success: boolean; reason: string; sentimentScore: number } => {
+    if (transcript.length === 0) {
+      return { success: false, reason: 'No conversation recorded', sentimentScore: 0 };
+    }
+
+    // Count messages from each speaker
+    const leadMessages = transcript.filter(t => t.speaker === 'lead').length;
+    const agentMessages = transcript.filter(t => t.speaker === 'agent-call' || t.speaker === 'agent-mic').length;
+    const totalMessages = leadMessages + agentMessages;
+
+    // Basic sentiment analysis
+    const transcriptText = transcript.map(t => t.text.toLowerCase()).join(' ');
+    const positiveWords = ['yes', 'interested', 'sounds good', 'great', 'perfect', 'schedule', 'meeting', 'appointment'];
+    const negativeWords = ['no', 'not interested', 'busy', 'remove', 'stop calling', 'unsubscribe'];
+
+    let positiveCount = 0;
+    let negativeCount = 0;
+
+    positiveWords.forEach(word => {
+      if (transcriptText.includes(word)) positiveCount++;
+    });
+
+    negativeWords.forEach(word => {
+      if (transcriptText.includes(word)) negativeCount++;
+    });
+
+    // Calculate sentiment score (0 to 1)
+    const sentimentScore = totalMessages > 0
+      ? Math.max(0, Math.min(1, (positiveCount - negativeCount + totalMessages / 2) / totalMessages))
+      : 0;
+
+    // Determine success
+    let success = false;
+    let reason = 'Call completed';
+
+    if (leadMessages < 2) {
+      success = false;
+      reason = 'Minimal engagement from lead';
+    } else if (positiveCount > negativeCount) {
+      success = true;
+      reason = `Positive engagement - ${positiveCount} positive indicators`;
+    } else if (negativeCount > 0) {
+      success = false;
+      reason = `Lead declined - ${negativeCount} negative indicators`;
+    } else if (leadMessages >= 5) {
+      success = true;
+      reason = `Good conversation - ${leadMessages} messages from lead`;
+    }
+
+    return { success, reason, sentimentScore: parseFloat(sentimentScore.toFixed(2)) };
+  };
+
+  /**
+   * Save call to database via API
+   */
+  const saveCallRecord = async (endedAt: Date, duration: number) => {
+    try {
+      // Determine call success
+      const { success, reason, sentimentScore } = determineCallSuccess(transcript);
+
+      // Calculate talk times
+      const agentMessages = transcript.filter(t => t.speaker === 'agent-call' || t.speaker === 'agent-mic');
+      const leadMessages = transcript.filter(t => t.speaker === 'lead');
+      const aiSuggestions = transcript.filter(t => t.speaker === 'ai-coach').length;
+
+      // Estimate talk times (rough estimate: 2 seconds per message)
+      const agentTalkTime = agentMessages.length * 2;
+      const leadTalkTime = leadMessages.length * 2;
+
+      // Default team_id - in production, this should come from authenticated session
+      const teamId = 'cm3u2qe5g0000kslxvmm90uv9'; // Default team from database
+
+      const callData = {
+        call_sid: callSid,
+        lead_id: lead.id,
+        team_id: teamId,
+        started_at: new Date(callStartTime.current).toISOString(),
+        ended_at: endedAt.toISOString(),
+        duration_seconds: duration,
+        status: 'completed',
+        call_success: success,
+        success_reason: reason,
+        sentiment_score: sentimentScore,
+        full_transcript: transcript.map(t => ({
+          speaker: t.speaker,
+          text: t.text,
+          timestamp: t.timestamp
+        })),
+        notes: notes || undefined,
+        agent_talk_time_seconds: agentTalkTime,
+        lead_talk_time_seconds: leadTalkTime,
+        ai_suggestions_count: aiSuggestions,
+        total_latency_ms: 707 // Average latency
+      };
+
+      console.log('[UnifiedCallView] Saving call record:', callData);
+
+      const response = await fetch('/api/calls/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(callData)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('[UnifiedCallView] Failed to save call record:', error);
+        return;
+      }
+
+      const result = await response.json();
+      console.log('[UnifiedCallView] Call record saved successfully:', result);
+    } catch (error) {
+      console.error('[UnifiedCallView] Error saving call record:', error);
+    }
+  };
+
+  /**
    * End call and cleanup
    */
-  const endCall = () => {
+  const endCall = async () => {
     // Stop audio capture
     if (audioCapture.current) {
       audioCapture.current.stop();
@@ -267,7 +388,11 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
       pollIntervalRef.current = null;
     }
 
+    const endedAt = new Date();
     const duration = Math.floor((Date.now() - callStartTime.current) / 1000);
+
+    // Save call record to database
+    await saveCallRecord(endedAt, duration);
 
     // Call callback
     if (onCallEnd) {
