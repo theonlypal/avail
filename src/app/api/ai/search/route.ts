@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { discoverLeads } from '@/lib/ai-lead-discovery';
-import { getDb } from '@/lib/db';
+import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Allow up to 60 seconds for complex searches
@@ -174,16 +174,15 @@ export async function POST(request: Request) {
     console.log(`🔍 Processing ${businesses.length} businesses`);
 
     // Step 3: Save leads to database
-    const db = getDb();
-
     // Get or create team
-    let team = db.prepare("SELECT id FROM teams LIMIT 1").get() as { id: string } | undefined;
+    let team = await db.get("SELECT id FROM teams LIMIT 1") as { id: string } | undefined;
     if (!team) {
       const teamId = crypto.randomUUID();
-      db.prepare(
+      await db.run(
         `INSERT INTO teams (id, team_name, created_at, updated_at)
-         VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
-      ).run(teamId, "Sales Team");
+         VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        [teamId, "Sales Team"]
+      );
       team = { id: teamId };
     }
 
@@ -193,9 +192,9 @@ export async function POST(request: Request) {
       try {
         // Check for duplicates
         const existing = business.phone
-          ? db.prepare("SELECT id FROM leads WHERE phone = ?").get(business.phone)
-          : db.prepare("SELECT id FROM leads WHERE business_name = ? AND location LIKE ?")
-              .get(business.name, `%${business.location}%`);
+          ? await db.get("SELECT id FROM leads WHERE phone = ?", [business.phone])
+          : await db.get("SELECT id FROM leads WHERE business_name = ? AND location LIKE ?",
+              [business.name, `%${business.location}%`]);
 
         if (existing) {
           console.log(`[AI Search] Skipping duplicate: ${business.name}`);
@@ -206,28 +205,29 @@ export async function POST(request: Request) {
         const leadId = crypto.randomUUID();
         const now = new Date().toISOString();
 
-        db.prepare(
+        await db.run(
           `INSERT INTO leads (
             id, team_id, business_name, industry, location, phone, email, website,
             rating, review_count, opportunity_score, pain_points,
             source, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(
-          leadId,
-          team.id,
-          business.name,
-          business.industry,
-          business.location,
-          business.phone,
-          business.email,
-          business.website,
-          business.rating || 0,
-          business.reviewCount || 0,
-          business.opportunityScore,
-          JSON.stringify(business.painPoints),
-          'ai_search',
-          now,
-          now
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            leadId,
+            team.id,
+            business.name,
+            business.industry,
+            business.location,
+            business.phone,
+            business.email,
+            business.website,
+            business.rating || 0,
+            business.reviewCount || 0,
+            business.opportunityScore,
+            JSON.stringify(business.painPoints),
+            'ai_search',
+            now,
+            now
+          ]
         );
 
         leadsAdded++;
