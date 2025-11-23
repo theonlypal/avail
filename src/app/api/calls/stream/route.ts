@@ -8,18 +8,18 @@
  * 1. Twilio sends audio chunks via WebSocket/POST
  * 2. We forward to Deepgram's live transcription API
  * 3. Deepgram returns transcripts with speaker labels
- * 4. We store transcripts and broadcast to dashboard
+ * 4. We store transcripts in database for real-time retrieval
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, LiveTranscriptionEvents } from '@deepgram/sdk';
+import { db } from '@/lib/db';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Store active Deepgram connections per call
+// Store active Deepgram connections per call (in-process only)
 const activeConnections = new Map<string, any>();
-const transcripts = new Map<string, any[]>();
 
 /**
  * POST handler for Twilio Media Stream events
@@ -39,7 +39,8 @@ export async function POST(request: NextRequest) {
       case 'start':
         console.log('[Media Stream] Starting transcription for call:', callSid);
         await initializeDeepgram(callSid);
-        transcripts.set(callSid, []);
+        // Initialize transcript storage in database
+        await initializeTranscriptStorage(callSid);
         break;
 
       case 'media':
@@ -59,11 +60,6 @@ export async function POST(request: NextRequest) {
           conn.finish();
           activeConnections.delete(callSid);
         }
-
-        // Save final transcript to database
-        const finalTranscript = transcripts.get(callSid) || [];
-        await saveTranscript(callSid, finalTranscript);
-        transcripts.delete(callSid);
         break;
     }
 
@@ -74,6 +70,53 @@ export async function POST(request: NextRequest) {
       { error: error.message },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Initialize transcript storage table for a call
+ */
+async function initializeTranscriptStorage(callSid: string) {
+  try {
+    // Create a temporary table to store live transcripts for this call
+    // In production, you might use Redis or a similar fast store
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS live_transcripts (
+        call_sid TEXT NOT NULL,
+        speaker TEXT NOT NULL,
+        text TEXT NOT NULL,
+        timestamp BIGINT NOT NULL,
+        confidence REAL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (call_sid, timestamp)
+      )
+    `);
+
+    console.log('[Database] Initialized live transcript storage for call:', callSid);
+  } catch (error) {
+    console.error('[Database] Failed to initialize transcript storage:', error);
+  }
+}
+
+/**
+ * Save a transcript entry to database
+ */
+async function saveTranscriptEntry(callSid: string, entry: any) {
+  try {
+    await db.run(`
+      INSERT INTO live_transcripts (call_sid, speaker, text, timestamp, confidence)
+      VALUES (?, ?, ?, ?, ?)
+    `, [
+      callSid,
+      entry.speaker,
+      entry.text,
+      entry.timestamp,
+      entry.confidence || 0.99
+    ]);
+
+    console.log(`[Database] Saved transcript: [${entry.speaker}] ${entry.text.substring(0, 50)}...`);
+  } catch (error) {
+    console.error('[Database] Failed to save transcript entry:', error);
   }
 }
 
@@ -106,22 +149,22 @@ async function initializeDeepgram(callSid: string) {
       console.log('[Deepgram] Connection opened for call:', callSid);
     });
 
-    connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
+    connection.on(LiveTranscriptionEvents.Transcript, async (data: any) => {
       const transcript = data.channel?.alternatives?.[0];
       if (transcript?.transcript) {
         const speaker = data.channel?.alternatives?.[0]?.words?.[0]?.speaker || 0;
 
         console.log(`[Deepgram] [Speaker ${speaker}]:`, transcript.transcript);
 
-        // Store transcript
-        const callTranscripts = transcripts.get(callSid) || [];
-        callTranscripts.push({
+        // Save transcript entry to database immediately
+        const entry = {
           speaker: speaker === 0 ? 'Agent' : 'Lead',
           text: transcript.transcript,
           timestamp: Date.now(),
           confidence: transcript.confidence,
-        });
-        transcripts.set(callSid, callTranscripts);
+        };
+
+        await saveTranscriptEntry(callSid, entry);
       }
     });
 
@@ -140,24 +183,7 @@ async function initializeDeepgram(callSid: string) {
 }
 
 /**
- * Save transcript to database
- */
-async function saveTranscript(callSid: string, transcript: any[]) {
-  try {
-    console.log(`[Database] Saving transcript for call ${callSid}:`, transcript.length, 'entries');
-
-    // TODO: Save to your database
-    // await sql`UPDATE call_logs SET transcript = ${JSON.stringify(transcript)} WHERE call_sid = ${callSid}`;
-
-    // For now, just log
-    console.log('[Database] Transcript saved successfully');
-  } catch (error) {
-    console.error('[Database] Failed to save transcript:', error);
-  }
-}
-
-/**
- * GET handler to retrieve transcripts for a call
+ * GET handler to retrieve transcripts for a call from database
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -170,11 +196,27 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const transcript = transcripts.get(callSid) || [];
+  try {
+    // Retrieve transcripts from database
+    const transcripts = await db.query(`
+      SELECT speaker, text, timestamp, confidence
+      FROM live_transcripts
+      WHERE call_sid = ?
+      ORDER BY timestamp ASC
+    `, [callSid]);
 
-  return NextResponse.json({
-    callSid,
-    transcript,
-    status: activeConnections.has(callSid) ? 'active' : 'completed',
-  });
+    console.log(`[API] Retrieved ${transcripts.length} transcripts for call ${callSid}`);
+
+    return NextResponse.json({
+      callSid,
+      transcript: transcripts,
+      status: activeConnections.has(callSid) ? 'active' : 'completed',
+    });
+  } catch (error: any) {
+    console.error('[API] Failed to retrieve transcripts:', error);
+    return NextResponse.json(
+      { error: 'Failed to retrieve transcripts', details: error.message },
+      { status: 500 }
+    );
+  }
 }
