@@ -1,12 +1,18 @@
 /**
- * AI-Powered Lead Search Engine
- * Uses Claude Sonnet 4.5 + Serper API for REAL lead discovery
- * NO DEMOS - Only real API calls
+ * Professional AI-Powered Lead Search Engine
+ * Uses Google Places API for verified, structured business data
+ * + Claude Sonnet 4.5 for intelligent lead scoring and analysis
+ *
+ * Features:
+ * - Verified phone numbers and addresses
+ * - Accurate ratings and reviews
+ * - AI-powered opportunity scoring
+ * - Professional-grade results only
  */
 
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { discoverLeads } from '@/lib/ai-lead-discovery';
+import { discoverLeadsWithPlaces, rankLeads } from '@/lib/google-places-discovery';
 import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -102,29 +108,32 @@ Respond ONLY with valid JSON in this exact format:
 }
 
 /**
- * Search for businesses using REAL AI-powered discovery
- * Uses Serper API + Claude Sonnet 4.5
+ * Search for businesses using Google Places API (Professional-Grade)
+ * Provides verified, structured business data
  */
 async function searchBusinesses(parsedQuery: ParsedQuery): Promise<any[]> {
-  const industry = parsedQuery.industry || 'business';
-  const location = parsedQuery.location || 'San Diego, CA';
+  const query = parsedQuery.industry || parsedQuery.searchTerms || 'business';
+  const location = parsedQuery.location;
   const limit = parsedQuery.limit || 20;
 
-  console.log('[AI Search] Starting REAL lead discovery:', { industry, location, limit });
+  console.log('[AI Search] Starting Google Places discovery:', { query, location, limit });
 
   try {
-    // Use our TESTED lead discovery system
-    const result = await discoverLeads({
-      industry,
+    // Use professional Google Places API
+    const result = await discoverLeadsWithPlaces({
+      query,
       location,
       maxResults: limit,
       minRating: parsedQuery.filters?.minRating,
     });
 
-    console.log(`[AI Search] Found ${result.leads.length} real leads`);
+    console.log(`[AI Search] Found ${result.leads.length} verified businesses from Google Places`);
 
-    // Convert discovered leads to the format expected by the API
-    return result.leads.map(lead => ({
+    // Rank by opportunity score
+    const rankedLeads = rankLeads(result.leads);
+
+    // Convert to API format
+    return rankedLeads.map(lead => ({
       name: lead.name,
       industry: lead.industry,
       location: `${lead.city}, ${lead.state}`,
