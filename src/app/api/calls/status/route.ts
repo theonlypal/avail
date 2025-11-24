@@ -15,6 +15,10 @@ export async function POST(request: NextRequest) {
     const callDuration = formData.get('CallDuration') as string;
     const recordingUrl = formData.get('RecordingUrl') as string;
 
+    // Get lead_id from query params (passed through statusCallback URL)
+    const { searchParams } = new URL(request.url);
+    const leadId = searchParams.get('lead_id') || 'unknown';
+
     if (!callSid) {
       return NextResponse.json(
         { error: 'CallSid is required' },
@@ -42,7 +46,7 @@ export async function POST(request: NextRequest) {
     // Use INSERT...ON CONFLICT to handle case where row doesn't exist yet
     const upsertQuery = `
       INSERT INTO call_records (call_sid, lead_id, team_id, status, started_at, created_at, updated_at, duration_seconds, recording_url, ended_at)
-      VALUES (?, 'unknown', 'unknown', ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, 'unknown', ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (call_sid) DO UPDATE SET
         status = EXCLUDED.status,
         updated_at = EXCLUDED.updated_at,
@@ -53,6 +57,7 @@ export async function POST(request: NextRequest) {
 
     await db.run(upsertQuery, [
       callSid,
+      leadId,
       dbStatus,
       now,
       now,

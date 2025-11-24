@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         to: to_number,
         from: twilioPhoneNumber,
         url: `${appUrl}/api/calls/twiml`,
-        statusCallback: `${appUrl}/api/calls/status`,
+        statusCallback: `${appUrl}/api/calls/status?lead_id=${encodeURIComponent(lead_id)}`,
         statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
         statusCallbackMethod: 'POST',
         record: true,
