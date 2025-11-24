@@ -46,12 +46,15 @@ export async function GET(request: NextRequest) {
     // Query database for transcripts
     let transcripts;
     if (lastId) {
-      // Get only transcripts after lastId (lastId is timestamp)
+      // Extract timestamp from composite ID (format: callsid_timestamp)
+      const timestampStr = lastId.includes('_') ? lastId.split('_').pop() : lastId;
+      const lastTimestamp = timestampStr ? parseInt(timestampStr, 10) : 0;
+
       transcripts = await sql`
         SELECT call_sid, speaker, text, timestamp, confidence
         FROM live_transcripts
         WHERE call_sid = ${callSid}
-        AND timestamp > ${lastId}
+        AND timestamp > ${lastTimestamp}
         ORDER BY timestamp ASC
       `;
     } else {

@@ -37,12 +37,18 @@ export function AISearchBar({ onSearchComplete }: AISearchBarProps) {
     setSearchResults(null);
 
     try {
-      // Call AI-powered search API
+      // Call AI-powered search API with extended timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
       const response = await fetch("/api/ai/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error("Search failed");
@@ -62,9 +68,13 @@ export function AISearchBar({ onSearchComplete }: AISearchBarProps) {
 
     } catch (error) {
       console.error("AI search error:", error);
+      const errorMessage = error instanceof Error && error.name === 'AbortError'
+        ? "Search timed out. The search is still processing - please refresh the page in a moment to see your results."
+        : "Search failed. Please try again or refine your query.";
+
       setSearchResults({
         success: false,
-        message: "Search failed. Please try again or refine your query.",
+        message: errorMessage,
       });
     } finally {
       setIsSearching(false);

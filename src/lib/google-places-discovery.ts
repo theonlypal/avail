@@ -43,7 +43,8 @@ export interface DiscoveryResult {
 }
 
 /**
- * Search using Google Places API (New) - Text Search
+ * Search using Google Places API (New) - Text Search with AGGRESSIVE multi-strategy approach
+ * Extracts MAXIMUM results for ANY specific niche user query
  */
 async function searchPlaces(params: PlacesSearchParams): Promise<any[]> {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
@@ -53,25 +54,59 @@ async function searchPlaces(params: PlacesSearchParams): Promise<any[]> {
     return [];
   }
 
+  const allPlaces = new Map<string, any>(); // Dedupe by place ID
+
   try {
-    // Construct search query
-    const textQuery = params.location
+    // STRATEGY 1: Exact query as user typed
+    const exactQuery = params.location
       ? `${params.query} in ${params.location}`
       : params.query;
 
-    console.log(`[Places] Searching: ${textQuery}`);
+    console.log(`[Places] Strategy 1: Exact query "${exactQuery}"`);
+    const exact = await makeSearchRequest(apiKey, exactQuery, params.maxResults || 20);
+    exact.forEach(p => allPlaces.set(p.id || p.displayName?.text, p));
 
-    // Use Google Places API (New) - Text Search
+    // STRATEGY 2: Broader category search + location (e.g., "hamburger restaurant near Sunset Blvd, LA")
+    if (params.location) {
+      const broaderQuery = `${extractBroaderTerm(params.query)} near ${params.location}`;
+      console.log(`[Places] Strategy 2: Broader near "${broaderQuery}"`);
+      const broader = await makeSearchRequest(apiKey, broaderQuery, params.maxResults || 20);
+      broader.forEach(p => allPlaces.set(p.id || p.displayName?.text, p));
+    }
+
+    // STRATEGY 3: Just location-based category search (e.g., "hamburger restaurant in Los Angeles")
+    if (params.location) {
+      const categoryOnly = `${extractCategory(params.query)} in ${params.location}`;
+      console.log(`[Places] Strategy 3: Category only "${categoryOnly}"`);
+      const category = await makeSearchRequest(apiKey, categoryOnly, params.maxResults || 20);
+      category.forEach(p => allPlaces.set(p.id || p.displayName?.text, p));
+    }
+
+    const uniquePlaces = Array.from(allPlaces.values());
+    console.log(`[Places] Found ${uniquePlaces.length} unique verified businesses across all strategies`);
+    return uniquePlaces;
+
+  } catch (error) {
+    console.error('[Places] Search error:', error);
+    return [];
+  }
+}
+
+/**
+ * Make a single Google Places API request
+ */
+async function makeSearchRequest(apiKey: string, textQuery: string, maxResults: number): Promise<any[]> {
+  try {
     const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.types,places.businessStatus,places.addressComponents'
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.types,places.businessStatus,places.addressComponents'
       },
       body: JSON.stringify({
         textQuery,
-        maxResultCount: params.maxResults || 20,
+        maxResultCount: Math.min(maxResults, 20), // API limit is 20
         languageCode: 'en',
         rankPreference: 'RELEVANCE'
       })
@@ -84,15 +119,51 @@ async function searchPlaces(params: PlacesSearchParams): Promise<any[]> {
     }
 
     const data = await response.json();
-    const places = data.places || [];
-
-    console.log(`[Places] Found ${places.length} verified businesses`);
-    return places;
-
+    return data.places || [];
   } catch (error) {
-    console.error('[Places] Search error:', error);
+    console.error('[Places] Request error:', error);
     return [];
   }
+}
+
+/**
+ * Extract broader term from specific query
+ * e.g., "smash burgers" -> "burgers" or "hamburger restaurant"
+ */
+function extractBroaderTerm(query: string): string {
+  const lower = query.toLowerCase();
+
+  // Common patterns
+  if (lower.includes('smash burger')) return 'hamburger restaurant';
+  if (lower.includes('burger')) return 'hamburger restaurant';
+  if (lower.includes('pizza')) return 'pizza restaurant';
+  if (lower.includes('taco')) return 'mexican restaurant';
+  if (lower.includes('sushi')) return 'sushi restaurant';
+  if (lower.includes('indian') || lower.includes('curry')) return 'indian restaurant';
+  if (lower.includes('chinese')) return 'chinese restaurant';
+  if (lower.includes('italian')) return 'italian restaurant';
+  if (lower.includes('thai')) return 'thai restaurant';
+
+  // Default: just return the query
+  return query;
+}
+
+/**
+ * Extract just the category from query
+ */
+function extractCategory(query: string): string {
+  const lower = query.toLowerCase();
+
+  // Extract core category
+  if (lower.includes('burger')) return 'burger restaurant';
+  if (lower.includes('pizza')) return 'pizza';
+  if (lower.includes('taco')) return 'tacos';
+  if (lower.includes('indian')) return 'indian food';
+  if (lower.includes('sushi')) return 'sushi';
+  if (lower.includes('chinese')) return 'chinese food';
+  if (lower.includes('restaurant')) return 'restaurant';
+
+  return query;
 }
 
 /**

@@ -11,13 +11,14 @@ import { useState } from "react";
 import { Phone, Sparkles, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import UnifiedCallView from "@/components/unified-call-view";
+import { ImmersiveCallScreen } from "@/components/copilot/immersive-call-screen";
+import type { Lead } from "@/types";
 
 export default function TestDialerPage() {
   const router = useRouter();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [businessName, setBusinessName] = useState("");
-  const [callStarted, setCallStarted] = useState<string | false>(false); // Store call_sid
+  const [callingLead, setCallingLead] = useState<Lead | null>(null);
   const [error, setError] = useState("");
 
   // Format phone number as user types
@@ -61,97 +62,46 @@ export default function TestDialerPage() {
     const digits = phoneNumber.replace(/\D/g, "");
     const e164Phone = digits.length === 11 ? `+${digits}` : `+1${digits}`;
 
-    console.log(`[TestDialer] Initiating call to ${e164Phone}...`);
-
-    // Initiate actual Twilio call
-    try {
-      const response = await fetch("/api/calls/initiate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lead_id: `test-${Date.now()}`,
-          to_number: e164Phone,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        const errorMsg = result.error || "Failed to initiate call";
-        console.error(`[TestDialer] Failed to start call: ${result.error}`, result.details);
-        setError(errorMsg);
-        return;
-      }
-
-      console.log(`[TestDialer] ✅ Twilio call initiated - Call SID: ${result.call_sid}`);
-
-      // Store call SID in state - this will trigger UnifiedCallView to mount
-      setCallStarted(result.call_sid);
-      console.log(`[TestDialer] State updated: callStarted = ${result.call_sid}`);
-    } catch (err: any) {
-      const errorMsg = "Failed to initiate call";
-      console.error("[TestDialer] Call initiation error:", err);
-      setError(errorMsg);
-    }
-  };
-
-  const handleCallEnd = async (transcript: any[], duration: number) => {
-    console.log("[TestDialer] handleCallEnd called", { duration, transcriptLength: transcript.length });
-
-    // Save to database if desired
-    try {
-      await fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contact_id: null,
-          direction: "outbound",
-          channel: "sms",
-          body: JSON.stringify(transcript),
-          status: "completed",
-          metadata: {
-            type: "test_call",
-            duration,
-            ai_coached: true,
-            phone_number: phoneNumber,
-            business_name: businessName || "Test Call"
-          },
-        }),
-      });
-    } catch (error) {
-      console.error("[TestDialer] Failed to save call:", error);
-    }
-
-    console.log("[TestDialer] Resetting state - returning to form view");
-    // Reset form - this will unmount UnifiedCallView and show the input form again
-    setCallStarted(false);
-    setPhoneNumber("");
-    setBusinessName("");
-  };
-
-  // If call started, show UnifiedCallView
-  if (callStarted) {
-    console.log("[TestDialer] Rendering UnifiedCallView with callSid:", callStarted);
-
-    const digits = phoneNumber.replace(/\D/g, "");
-    const e164Phone = digits.length === 11 ? `+${digits}` : `+1${digits}`;
-
-    const leadContext = {
+    // Create a lead object for the call
+    const testLead: Lead = {
       id: `test-${Date.now()}`,
-      name: businessName || "Test Call",
+      business_name: businessName || "Test Call",
       phone: e164Phone,
+      email: "",
       website: "",
       address: "",
-      business_type: "Test",
-      rating: undefined,
-      user_ratings_total: undefined,
-      score: undefined,
+      location: "Test Location",
+      industry: "Test",
+      pain_points: [],
+      opportunity_score: 0,
+      rating: 0,
+      review_count: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      team_id: "",
+      owner: null,
+      status: "new",
+      last_contacted: null,
+      notes: "",
+      tags: [],
+      source: "manual",
+      verified: null,
+      verification_date: null,
+      folder_id: null,
     };
 
-    return <UnifiedCallView callSid={callStarted} lead={leadContext} onCallEnd={handleCallEnd} />;
-  }
+    // Open immersive call screen
+    setCallingLead(testLead);
+  };
 
-  console.log("[TestDialer] Rendering phone input form (callStarted =", callStarted, ")");
+  const handleCallEnd = (callData: any) => {
+    console.log("[TestDialer] Call completed", callData);
+    // Reset form
+    setCallingLead(null);
+    setPhoneNumber("");
+    setBusinessName("");
+    setError("");
+  };
 
   // Show phone input form
   return (
@@ -357,6 +307,15 @@ export default function TestDialerPage() {
           </p>
         </div>
       </div>
+
+      {/* Immersive Call Screen */}
+      {callingLead && (
+        <ImmersiveCallScreen
+          lead={callingLead}
+          onCallEnd={handleCallEnd}
+          onClose={() => setCallingLead(null)}
+        />
+      )}
     </div>
   );
 }

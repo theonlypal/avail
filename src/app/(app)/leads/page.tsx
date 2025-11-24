@@ -9,12 +9,13 @@
 
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Sparkles, Folder, Plus, Settings, MessageSquare, Send, X, Minimize2, Maximize2, Bot, Target } from "lucide-react";
+import { Search, Sparkles, Folder, Plus, Settings, MessageSquare, Send, X, Minimize2, Maximize2, Bot, Target, Phone } from "lucide-react";
 import type { LeadFilter } from "@/types";
 import { fetchLeads } from "@/lib/leads-client";
 import { LeadTable } from "@/components/dashboard/lead-table";
 import { AISearchBar } from "@/components/dashboard/ai-search-bar";
 import { FolderManager } from "@/components/dashboard/folder-manager";
+import { KeypadDialer } from "@/components/dashboard/keypad-dialer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -29,6 +30,7 @@ export default function LeadsPage() {
   const [filter, setFilter] = useState<LeadFilter | undefined>();
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [showFolderManager, setShowFolderManager] = useState(false);
+  const [showKeypadDialer, setShowKeypadDialer] = useState(false);
 
   // Lead Discovery State
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
@@ -330,16 +332,25 @@ export default function LeadsPage() {
               </p>
             </div>
 
-            {filter && (
+            <div className="flex items-center gap-2">
               <Button
-                onClick={() => setFilter(undefined)}
-                variant="outline"
-                size="sm"
-                className="h-8 border-white/10 text-slate-400 hover:text-white hover:bg-white/5"
+                onClick={() => setShowKeypadDialer(true)}
+                className="h-9 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg shadow-green-500/20"
               >
-                Clear Filters
+                <Phone className="h-4 w-4 mr-2" />
+                Keypad
               </Button>
-            )}
+              {filter && (
+                <Button
+                  onClick={() => setFilter(undefined)}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-white/10 text-slate-400 hover:text-white hover:bg-white/5"
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </div>
           </div>
 
           {leads.length > 0 ? (
@@ -651,6 +662,11 @@ export default function LeadsPage() {
           </div>
         )}
       </div>
+
+      {/* Keypad Dialer Modal */}
+      {showKeypadDialer && (
+        <KeypadDialer onClose={() => setShowKeypadDialer(false)} />
+      )}
     </div>
   );
 }

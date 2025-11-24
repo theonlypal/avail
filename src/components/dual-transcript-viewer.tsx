@@ -32,6 +32,7 @@ export default function DualTranscriptViewer({
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [callStatus, setCallStatus] = useState<'active' | 'completed'>('active');
   const [isPolling, setIsPolling] = useState(true);
+  const [lastId, setLastId] = useState<string | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -43,7 +44,11 @@ export default function DualTranscriptViewer({
 
     const pollTranscripts = async () => {
       try {
-        const response = await fetch(`/api/calls/stream?callSid=${callSid}`);
+        const url = lastId
+          ? `/api/calls/transcripts?call_sid=${callSid}&last_id=${lastId}`
+          : `/api/calls/transcripts?call_sid=${callSid}`;
+
+        const response = await fetch(url);
 
         if (!response.ok) {
           console.error('[Transcript] Failed to fetch:', response.status);
@@ -52,17 +57,29 @@ export default function DualTranscriptViewer({
 
         const data = await response.json();
 
-        if (data.transcript && data.transcript.length > 0) {
-          setTranscript(data.transcript);
+        if (data.transcripts && data.transcripts.length > 0) {
+          // Append new transcripts (incremental updates)
+          const newEntries = data.transcripts.map((t: any) => ({
+            speaker: t.speaker === 'user' ? 'Agent' : 'Lead',
+            text: t.text,
+            timestamp: new Date(t.timestamp).getTime(),
+            confidence: t.confidence
+          }));
 
-          if (onTranscriptUpdate) {
-            onTranscriptUpdate(data.transcript);
+          setTranscript(prev => {
+            const updated = [...prev, ...newEntries];
+            // Call callback with updated transcript
+            if (onTranscriptUpdate) {
+              onTranscriptUpdate(updated);
+            }
+            return updated;
+          });
+
+          // Update last_id for incremental polling
+          const lastTranscript = data.transcripts[data.transcripts.length - 1];
+          if (lastTranscript?.id) {
+            setLastId(lastTranscript.id);
           }
-        }
-
-        if (data.status === 'completed') {
-          setCallStatus('completed');
-          setIsPolling(false);
         }
       } catch (error) {
         console.error('[Transcript] Poll error:', error);
@@ -72,15 +89,15 @@ export default function DualTranscriptViewer({
     // Initial poll
     pollTranscripts();
 
-    // Poll every 500ms for real-time updates
-    pollIntervalRef.current = setInterval(pollTranscripts, 500);
+    // Poll every 2 seconds (reduced from 500ms to prevent overload)
+    pollIntervalRef.current = setInterval(pollTranscripts, 2000);
 
     return () => {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [callSid, isPolling, onTranscriptUpdate]);
+  }, [callSid, isPolling, lastId]);
 
   /**
    * Auto-scroll to bottom when new transcript arrives

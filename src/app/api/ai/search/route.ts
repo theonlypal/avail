@@ -53,7 +53,7 @@ async function parseSearchQuery(query: string): Promise<ParsedQuery> {
 Query: "${query}"
 
 Extract:
-1. Industry/business type (e.g., "HVAC", "dental", "plumbing", "restaurant")
+1. Industry/business type - PRESERVE SPECIFIC CUISINE TYPES and NICHES like "indian food", "italian restaurant", "smash burgers", "halal", etc. DO NOT generalize cuisine types to just "restaurant". Keep the full specific descriptor.
 2. Location (city, state)
 3. Number of results wanted (default: 20)
 4. Filters:
@@ -63,7 +63,7 @@ Extract:
 
 Respond ONLY with valid JSON in this exact format:
 {
-  "industry": "string or null",
+  "industry": "string or null - keep specific cuisine/niche terms",
   "location": "city, state or null",
   "limit": number,
   "filters": {
@@ -73,7 +73,7 @@ Respond ONLY with valid JSON in this exact format:
     "minReviews": number or null,
     "maxReviews": number or null
   },
-  "searchTerms": "string - simplified search terms for web search"
+  "searchTerms": "string - the specific search terms preserving cuisine type and niche"
 }`;
 
   const message = await anthropic.messages.create({
@@ -112,7 +112,9 @@ Respond ONLY with valid JSON in this exact format:
  * Provides verified, structured business data
  */
 async function searchBusinesses(parsedQuery: ParsedQuery): Promise<any[]> {
-  const query = parsedQuery.industry || parsedQuery.searchTerms || 'business';
+  // Use searchTerms first to preserve specific niches like "indian food", "smash burgers", etc.
+  // Only fall back to industry if searchTerms is not available
+  const query = parsedQuery.searchTerms || parsedQuery.industry || 'business';
   const location = parsedQuery.location;
   const limit = parsedQuery.limit || 20;
 
