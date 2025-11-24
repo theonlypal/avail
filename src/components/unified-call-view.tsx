@@ -216,14 +216,8 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
         }
       );
 
-      // Start call timer
-      callStartTime.current = Date.now();
-      setIsCallActive(true);
-
-      timerInterval.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - callStartTime.current) / 1000);
-        setCallDuration(elapsed);
-      }, 1000);
+      // Note: Call timer is started in the useEffect, not here
+      // This function is called AFTER the call is already active
     } catch (error: any) {
       console.error('[UnifiedCallView] Failed to start microphone:', error);
 
@@ -239,15 +233,8 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
         console.warn('[UnifiedCallView] HTTPS required for microphone - call continues with Twilio/Deepgram only');
       }
 
-      // Call is still active - just microphone transcription unavailable
-      setIsCallActive(true);
-      callStartTime.current = Date.now();
-
-      // Start call timer even without microphone
-      timerInterval.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - callStartTime.current) / 1000);
-        setCallDuration(elapsed);
-      }, 1000);
+      // Note: Call timer is already started in useEffect
+      // No need to set state or start timer here - call is already active
     }
   };
 
@@ -512,11 +499,25 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
   }, []);
 
   /**
-   * Auto-start microphone capture when component mounts (client-side only)
+   * Auto-start call WITHOUT microphone (microphone is optional)
+   * This ensures the call interface starts immediately even if mic permissions fail
    */
   useEffect(() => {
     if (isMounted && !isCallActive) {
-      startCall();
+      // Start call immediately without waiting for microphone
+      setIsCallActive(true);
+      callStartTime.current = Date.now();
+
+      // Start call timer
+      timerInterval.current = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - callStartTime.current) / 1000);
+        setCallDuration(elapsed);
+      }, 1000);
+
+      // Try to start microphone in background (non-blocking, optional)
+      startCall().catch((error) => {
+        console.warn('[UnifiedCallView] Microphone unavailable, continuing with Deepgram only:', error);
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMounted]);
