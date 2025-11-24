@@ -97,7 +97,7 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
     const pollTranscripts = async () => {
       try {
         console.log('[UnifiedCallView] Polling for transcripts. Call SID:', callSid);
-        const response = await fetch(`/api/calls/stream?callSid=${callSid}`);
+        const response = await fetch(`/api/calls/transcripts?call_sid=${callSid}`);
 
         if (!response.ok) {
           console.error('[Transcript] Failed to fetch:', response.status);
@@ -108,19 +108,19 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
         console.log('[UnifiedCallView] Poll response:', data);
 
         // Merge Twilio/Deepgram transcripts into unified transcript
-        if (data.transcript && data.transcript.length > 0) {
-          console.log('[UnifiedCallView] Received', data.transcript.length, 'transcripts from backend');
+        if (data.transcripts && data.transcripts.length > 0) {
+          console.log('[UnifiedCallView] Received', data.transcripts.length, 'transcripts from backend');
 
           setTranscript((prev) => {
             // Add new entries from Twilio/Deepgram that aren't already in transcript
             const existing = new Set(prev.map(t => `${t.speaker}-${t.timestamp}-${t.text}`));
-            const newEntries = data.transcript
-              .filter((t: any) => !existing.has(`${t.speaker === 'Agent' ? 'agent-call' : 'lead'}-${t.timestamp}-${t.text}`))
+            const newEntries = data.transcripts
+              .filter((t: any) => !existing.has(`${t.speaker === 'user' ? 'agent-call' : 'lead'}-${t.timestamp}-${t.text}`))
               .map((t: any) => ({
-                id: `twilio-${t.timestamp}-${Math.random()}`,
-                speaker: t.speaker === 'Agent' ? 'agent-call' : 'lead',
+                id: t.id || `twilio-${t.timestamp}-${Math.random()}`,
+                speaker: t.speaker === 'user' ? 'agent-call' : 'lead',
                 text: t.text,
-                timestamp: t.timestamp,
+                timestamp: new Date(t.timestamp).getTime(),
                 confidence: t.confidence,
                 isFinal: true,
               }));
@@ -209,10 +209,10 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
           }
         },
         (error) => {
-          console.error('Audio capture error:', error);
-          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-          alert(`Failed to capture audio: ${errorMsg}\n\nPlease check:\n1. Microphone permissions are allowed\n2. You're on HTTPS (production)\n3. Check browser console for details`);
-          endCall();
+          console.error('[UnifiedCallView] Audio capture error:', error);
+          // DON'T end the call - the Twilio call is still active even if mic transcription fails
+          // The user can still see Deepgram transcripts from the phone call
+          console.warn('[UnifiedCallView] Microphone transcription failed, but call continues with Twilio/Deepgram audio');
         }
       );
 
@@ -225,23 +225,29 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
         setCallDuration(elapsed);
       }, 1000);
     } catch (error: any) {
-      console.error('Failed to start call:', error);
+      console.error('[UnifiedCallView] Failed to start microphone:', error);
 
-      // Provide specific error messages
-      let errorMessage = 'Failed to start microphone capture. ';
+      // Log detailed error but DON'T show alert or end call
+      // The Twilio call is still active and Deepgram transcription will work
       if (error.name === 'NotAllowedError') {
-        errorMessage += 'Microphone access was denied. Please allow microphone permissions in your browser settings and try again.';
+        console.warn('[UnifiedCallView] Microphone access denied - call continues with Twilio/Deepgram only');
       } else if (error.name === 'NotFoundError') {
-        errorMessage += 'No microphone found. Please connect a microphone and try again.';
+        console.warn('[UnifiedCallView] No microphone found - call continues with Twilio/Deepgram only');
       } else if (error.name === 'NotReadableError') {
-        errorMessage += 'Microphone is already in use by another application. Please close other apps using the microphone and try again.';
-      } else if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-        errorMessage += 'Microphone access requires HTTPS. This feature only works on the production deployment (https://...).';
-      } else {
-        errorMessage += error.message || 'Please check microphone permissions and try again.';
+        console.warn('[UnifiedCallView] Microphone in use - call continues with Twilio/Deepgram only');
+      } else if (typeof window !== 'undefined' && window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        console.warn('[UnifiedCallView] HTTPS required for microphone - call continues with Twilio/Deepgram only');
       }
 
-      alert(errorMessage);
+      // Call is still active - just microphone transcription unavailable
+      setIsCallActive(true);
+      callStartTime.current = Date.now();
+
+      // Start call timer even without microphone
+      timerInterval.current = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - callStartTime.current) / 1000);
+        setCallDuration(elapsed);
+      }, 1000);
     }
   };
 
