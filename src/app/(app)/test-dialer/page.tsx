@@ -61,6 +61,8 @@ export default function TestDialerPage() {
     const digits = phoneNumber.replace(/\D/g, "");
     const e164Phone = digits.length === 11 ? `+${digits}` : `+1${digits}`;
 
+    console.log(`[TestDialer] Initiating call to ${e164Phone}...`);
+
     // Initiate actual Twilio call
     try {
       const response = await fetch("/api/calls/initiate", {
@@ -76,26 +78,25 @@ export default function TestDialerPage() {
 
       if (!response.ok) {
         const errorMsg = result.error || "Failed to initiate call";
+        console.error(`[TestDialer] Failed to start call: ${result.error}`, result.details);
         setError(errorMsg);
-        // Don't use alert() - it can crash the page. Just show error in UI via setError state
-        console.error(`Failed to start call: ${result.error}`, result.details);
         return;
       }
 
-      console.log(`✅ Twilio call initiated to ${e164Phone} - Call SID: ${result.call_sid}`);
+      console.log(`[TestDialer] ✅ Twilio call initiated - Call SID: ${result.call_sid}`);
 
-      // Store call SID in state to pass to LiveCallCoach
+      // Store call SID in state - this will trigger UnifiedCallView to mount
       setCallStarted(result.call_sid);
+      console.log(`[TestDialer] State updated: callStarted = ${result.call_sid}`);
     } catch (err: any) {
       const errorMsg = "Failed to initiate call";
+      console.error("[TestDialer] Call initiation error:", err);
       setError(errorMsg);
-      // Don't use alert() - it can crash the page. Just show error in UI via setError state
-      console.error("Call initiation error:", err);
     }
   };
 
   const handleCallEnd = async (transcript: any[], duration: number) => {
-    console.log("[Test Dialer] Call ended", { duration, transcriptLength: transcript.length });
+    console.log("[TestDialer] handleCallEnd called", { duration, transcriptLength: transcript.length });
 
     // Save to database if desired
     try {
@@ -118,10 +119,11 @@ export default function TestDialerPage() {
         }),
       });
     } catch (error) {
-      console.error("[Test Dialer] Failed to save call:", error);
+      console.error("[TestDialer] Failed to save call:", error);
     }
 
-    // Reset form
+    console.log("[TestDialer] Resetting state - returning to form view");
+    // Reset form - this will unmount UnifiedCallView and show the input form again
     setCallStarted(false);
     setPhoneNumber("");
     setBusinessName("");
@@ -129,6 +131,8 @@ export default function TestDialerPage() {
 
   // If call started, show UnifiedCallView
   if (callStarted) {
+    console.log("[TestDialer] Rendering UnifiedCallView with callSid:", callStarted);
+
     const digits = phoneNumber.replace(/\D/g, "");
     const e164Phone = digits.length === 11 ? `+${digits}` : `+1${digits}`;
 
@@ -146,6 +150,8 @@ export default function TestDialerPage() {
 
     return <UnifiedCallView callSid={callStarted} lead={leadContext} onCallEnd={handleCallEnd} />;
   }
+
+  console.log("[TestDialer] Rendering phone input form (callStarted =", callStarted, ")");
 
   // Show phone input form
   return (
