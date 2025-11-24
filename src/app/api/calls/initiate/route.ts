@@ -26,7 +26,18 @@ function getSqliteDb(): Database.Database {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Try to parse JSON body with error handling
+    let body;
+    try {
+      body = await request.json();
+    } catch (jsonError) {
+      console.error('[Call initiation] Failed to parse JSON body:', jsonError);
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+
     const { lead_id, to_number } = body;
 
     if (!lead_id || !to_number) {

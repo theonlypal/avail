@@ -9,16 +9,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createContact, getContactsByBusiness, getContactById } from '@/lib/db-crm';
 import { neon } from '@neondatabase/serverless';
-import Database from 'better-sqlite3';
-import path from 'path';
 
-const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
-
-function getSqliteDb(): Database.Database {
-  const DB_PATH = path.join(process.cwd(), 'data', 'leadly.db');
-  return new Database(DB_PATH);
-}
+const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+const sql = IS_PRODUCTION && postgresUrl ? neon(postgresUrl) : null;
 
 /**
  * GET /api/contacts
@@ -43,7 +37,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all contacts with optional search - JOIN with businesses table
-    if (IS_PRODUCTION && sql) {
+    if (!sql) {
+      return NextResponse.json({
+        contacts: [],
+        message: 'Database not configured'
+      });
+    }
+
+    // Try to query with businesses table, fall back to just contacts if it doesn't exist
+    try {
       let query;
       if (search) {
         query = sql`
@@ -75,30 +77,34 @@ export async function GET(request: NextRequest) {
       }
       const contacts = await query;
       return NextResponse.json({ contacts });
-    } else {
-      // SQLite with JOIN
-      const db = getSqliteDb();
-      let query = `
-        SELECT
-          c.*,
-          b.name as business_name,
-          b.industry as business_industry
-        FROM contacts c
-        LEFT JOIN businesses b ON c.business_id = b.id
-      `;
-      const params: any[] = [];
-
-      if (search) {
-        query += ` WHERE c.first_name LIKE ? OR c.last_name LIKE ? OR c.email LIKE ? OR c.phone LIKE ? OR b.name LIKE ?`;
-        const searchPattern = `%${search}%`;
-        params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
+    } catch (joinError: any) {
+      // If businesses table doesn't exist, fall back to just contacts
+      if (joinError.code === '42P01') {
+        console.warn('[Contacts API] businesses table does not exist, returning contacts only');
+        let fallbackQuery;
+        if (search) {
+          fallbackQuery = sql`
+            SELECT c.*
+            FROM contacts c
+            WHERE c.first_name ILIKE ${`%${search}%`}
+               OR c.last_name ILIKE ${`%${search}%`}
+               OR c.email ILIKE ${`%${search}%`}
+               OR c.phone ILIKE ${`%${search}%`}
+            ORDER BY c.created_at DESC
+            LIMIT ${limit} OFFSET ${offset}
+          `;
+        } else {
+          fallbackQuery = sql`
+            SELECT c.*
+            FROM contacts c
+            ORDER BY c.created_at DESC
+            LIMIT ${limit} OFFSET ${offset}
+          `;
+        }
+        const contacts = await fallbackQuery;
+        return NextResponse.json({ contacts });
       }
-
-      query += ` ORDER BY c.created_at DESC LIMIT ? OFFSET ?`;
-      params.push(limit, offset);
-
-      const contacts = db.prepare(query).all(...params);
-      return NextResponse.json({ contacts });
+      throw joinError;
     }
 
   } catch (error: any) {
