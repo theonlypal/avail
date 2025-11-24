@@ -55,19 +55,34 @@ export async function POST(request: NextRequest) {
         ended_at = CASE WHEN EXCLUDED.status = 'completed' THEN EXCLUDED.ended_at ELSE call_records.ended_at END
     `;
 
-    await db.run(upsertQuery, [
-      callSid,
-      leadId,
-      dbStatus,
-      now,
-      now,
-      now,
-      callDuration ? parseInt(callDuration, 10) : null,
-      recordingUrl || null,
-      dbStatus === 'completed' ? now : null
-    ]);
+    try {
+      await db.run(upsertQuery, [
+        callSid,
+        leadId,
+        dbStatus,
+        now,
+        now,
+        now,
+        callDuration ? parseInt(callDuration, 10) : null,
+        recordingUrl || null,
+        dbStatus === 'completed' ? now : null
+      ]);
 
-    console.log(`📞 Call ${callSid} status updated: ${callStatus}`);
+      console.log(`📞 Call ${callSid} status updated: ${callStatus}`);
+    } catch (dbError: any) {
+      // Handle foreign key constraint violation gracefully
+      if (dbError.code === '23503' && dbError.constraint === 'call_records_lead_id_fkey') {
+        console.warn(`⚠️  Call ${callSid} status update skipped: lead_id=${leadId} does not exist in leads table`);
+        // Return success to prevent frontend crash - call status will not be tracked
+        return NextResponse.json({
+          success: true,
+          message: `Call status received but not recorded (invalid lead_id)`,
+          warning: 'Lead does not exist in database'
+        });
+      }
+      // Re-throw other database errors
+      throw dbError;
+    }
 
     return NextResponse.json({
       success: true,
