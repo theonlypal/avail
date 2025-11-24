@@ -208,9 +208,8 @@ export async function POST(request: Request) {
         await db.run(
           `INSERT INTO leads (
             id, team_id, business_name, industry, location, phone, email, website,
-            rating, review_count, opportunity_score, pain_points,
-            source, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            rating, review_count, opportunity_score, pain_points, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             leadId,
             team.id,
@@ -224,8 +223,6 @@ export async function POST(request: Request) {
             business.reviewCount || 0,
             business.opportunityScore,
             JSON.stringify(business.painPoints),
-            'ai_search',
-            now,
             now
           ]
         );
