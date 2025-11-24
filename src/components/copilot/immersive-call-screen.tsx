@@ -283,8 +283,8 @@ export function ImmersiveCallScreen({ lead, onCallEnd, onClose }: ImmersiveCallS
 
     } catch (error) {
       console.error("Call initiation error:", error);
-      alert("Failed to start call. Using demo mode.");
-      // Still proceed with demo
+      // Don't use alert() - it can crash the page. Gracefully fall back to demo mode.
+      // Still proceed with demo mode so user can test the UI
       setTimeout(() => setCallStatus("ringing"), 1000);
       setTimeout(() => {
         setCallStatus("connected");

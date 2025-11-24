@@ -75,8 +75,10 @@ export default function TestDialerPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.error || "Failed to initiate call");
-        alert(`Failed to start call: ${result.error}\n\n${result.details || ""}`);
+        const errorMsg = result.error || "Failed to initiate call";
+        setError(errorMsg);
+        // Don't use alert() - it can crash the page. Just show error in UI via setError state
+        console.error(`Failed to start call: ${result.error}`, result.details);
         return;
       }
 
@@ -85,8 +87,9 @@ export default function TestDialerPage() {
       // Store call SID in state to pass to LiveCallCoach
       setCallStarted(result.call_sid);
     } catch (err: any) {
-      setError("Failed to initiate call");
-      alert(`Failed to start call: ${err.message}`);
+      const errorMsg = "Failed to initiate call";
+      setError(errorMsg);
+      // Don't use alert() - it can crash the page. Just show error in UI via setError state
       console.error("Call initiation error:", err);
     }
   };

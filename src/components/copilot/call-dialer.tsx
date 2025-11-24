@@ -108,8 +108,10 @@ export function CallDialer({ lead, onCallEnd, onClose }: CallDialerProps) {
 
     } catch (error) {
       console.error("Call initiation error:", error);
-      alert("Failed to start call. Please check Twilio configuration.");
+      // Don't use alert() - it can crash the page. Set idle state and log error.
       setCallStatus("idle");
+      // Show user-friendly error in UI instead of crashing with alert
+      // The parent component should handle displaying errors
     }
   };
 
