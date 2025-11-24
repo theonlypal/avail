@@ -6,15 +6,20 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { neon } from '@neondatabase/serverless';
 
-// In-memory transcript store (use Redis in production)
-const transcriptStore = new Map<string, TranscriptLine[]>();
+const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+
+// Initialize database connection
+const sql = IS_PRODUCTION && postgresUrl ? neon(postgresUrl) : null;
 
 interface TranscriptLine {
-  id: string;
-  speaker: 'user' | 'lead';
+  call_sid: string;
+  speaker: 'Agent' | 'Lead';
   text: string;
   timestamp: string;
+  confidence?: number;
 }
 
 export async function GET(request: NextRequest) {
@@ -29,69 +34,55 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const transcripts = transcriptStore.get(callSid) || [];
-
-  // If lastId provided, return only new transcripts
-  if (lastId) {
-    const lastIndex = transcripts.findIndex(t => t.id === lastId);
-    const newTranscripts = lastIndex >= 0 ? transcripts.slice(lastIndex + 1) : [];
-
-    return NextResponse.json({
-      success: true,
-      transcripts: newTranscripts,
-      has_more: false,
-    });
-  }
-
-  // Return all transcripts
-  return NextResponse.json({
-    success: true,
-    transcripts,
-  });
-}
-
-/**
- * POST /api/calls/transcripts
- *
- * Add a new transcript line (called by the transcription service or demo)
- */
-export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { call_sid, speaker, text } = body;
-
-    if (!call_sid || !speaker || !text) {
-      return NextResponse.json(
-        { error: 'call_sid, speaker, and text are required' },
-        { status: 400 }
-      );
+    if (!sql) {
+      return NextResponse.json({
+        success: true,
+        transcripts: [],
+        message: 'Database not configured - demo mode'
+      });
     }
 
-    const transcriptLine: TranscriptLine = {
-      id: `${Date.now()}-${Math.random()}`,
-      speaker: speaker as 'user' | 'lead',
-      text,
-      timestamp: new Date().toISOString(),
-    };
+    // Query database for transcripts
+    let transcripts;
+    if (lastId) {
+      // Get only transcripts after lastId (lastId is timestamp)
+      transcripts = await sql`
+        SELECT call_sid, speaker, text, timestamp, confidence
+        FROM live_transcripts
+        WHERE call_sid = ${callSid}
+        AND timestamp > ${lastId}
+        ORDER BY timestamp ASC
+      `;
+    } else {
+      // Get all transcripts for this call
+      transcripts = await sql`
+        SELECT call_sid, speaker, text, timestamp, confidence
+        FROM live_transcripts
+        WHERE call_sid = ${callSid}
+        ORDER BY timestamp ASC
+      `;
+    }
 
-    const existing = transcriptStore.get(call_sid) || [];
-    existing.push(transcriptLine);
-    transcriptStore.set(call_sid, existing);
-
-    // Auto-cleanup after 1 hour
-    setTimeout(() => {
-      transcriptStore.delete(call_sid);
-    }, 60 * 60 * 1000);
+    // Map speaker labels to match frontend expectations
+    const formattedTranscripts = transcripts.map((t: any) => ({
+      id: `${t.call_sid}_${t.timestamp}`, // Create composite ID from primary key
+      speaker: t.speaker === 'Agent' ? 'user' : 'lead',
+      text: t.text,
+      timestamp: new Date(parseInt(t.timestamp)).toISOString(),
+      confidence: t.confidence,
+    }));
 
     return NextResponse.json({
       success: true,
-      transcript: transcriptLine,
+      transcripts: formattedTranscripts,
+      has_more: false,
     });
 
   } catch (error) {
-    console.error('Transcript error:', error);
+    console.error('[Transcripts API] Error fetching transcripts:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to fetch transcripts', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
@@ -100,7 +91,7 @@ export async function POST(request: NextRequest) {
 /**
  * DELETE /api/calls/transcripts?call_sid=xxx
  *
- * Clear transcripts for a call (when call ends)
+ * Clear transcripts for a call (when call ends) - optional cleanup
  */
 export async function DELETE(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -113,10 +104,24 @@ export async function DELETE(request: NextRequest) {
     );
   }
 
-  transcriptStore.delete(callSid);
+  try {
+    if (sql) {
+      // Delete transcripts from database
+      await sql`
+        DELETE FROM live_transcripts
+        WHERE call_sid = ${callSid}
+      `;
+    }
 
-  return NextResponse.json({
-    success: true,
-    message: 'Transcripts cleared',
-  });
+    return NextResponse.json({
+      success: true,
+      message: 'Transcripts cleared',
+    });
+  } catch (error) {
+    console.error('[Transcripts API] Error clearing transcripts:', error);
+    return NextResponse.json(
+      { error: 'Failed to clear transcripts' },
+      { status: 500 }
+    );
+  }
 }

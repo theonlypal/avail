@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { db } from '@/lib/db';
 
 /**
  * POST /api/calls/status
@@ -22,27 +22,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const db = getDb();
     const now = new Date().toISOString();
 
-    // Update call log with status
-    const updateQuery = `
-      UPDATE call_logs
-      SET status = ?, updated_at = ?, duration = COALESCE(?, duration),
-          recording_url = COALESCE(?, recording_url),
-          ended_at = CASE WHEN ? = 'completed' THEN ? ELSE ended_at END
-      WHERE call_sid = ?
+    // Map Twilio status to database status (DB constraint: 'active', 'completed', 'failed', 'no_answer', 'busy')
+    const statusMap: Record<string, string> = {
+      'initiated': 'active',
+      'ringing': 'active',
+      'in-progress': 'active',
+      'answered': 'active',
+      'completed': 'completed',
+      'busy': 'busy',
+      'no-answer': 'no_answer',
+      'failed': 'failed',
+      'canceled': 'failed'
+    };
+    const dbStatus = statusMap[callStatus] || 'active';
+
+    // Insert or update call record (using call_records table for production)
+    // Use INSERT...ON CONFLICT to handle case where row doesn't exist yet
+    const upsertQuery = `
+      INSERT INTO call_records (call_sid, lead_id, team_id, status, started_at, created_at, updated_at, duration_seconds, recording_url, ended_at)
+      VALUES (?, 'unknown', 'unknown', ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT (call_sid) DO UPDATE SET
+        status = EXCLUDED.status,
+        updated_at = EXCLUDED.updated_at,
+        duration_seconds = COALESCE(EXCLUDED.duration_seconds, call_records.duration_seconds),
+        recording_url = COALESCE(EXCLUDED.recording_url, call_records.recording_url),
+        ended_at = CASE WHEN EXCLUDED.status = 'completed' THEN EXCLUDED.ended_at ELSE call_records.ended_at END
     `;
 
-    db.prepare(updateQuery).run(
-      callStatus,
+    await db.run(upsertQuery, [
+      callSid,
+      dbStatus,
+      now,
+      now,
       now,
       callDuration ? parseInt(callDuration, 10) : null,
       recordingUrl || null,
-      callStatus,
-      callStatus === 'completed' ? now : null,
-      callSid
-    );
+      dbStatus === 'completed' ? now : null
+    ]);
 
     console.log(`📞 Call ${callSid} status updated: ${callStatus}`);
 
