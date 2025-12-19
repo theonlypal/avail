@@ -5,12 +5,22 @@
  */
 
 import { createClient } from '@libsql/client';
-import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
 // Check if we're in production with Turso credentials
 const isProduction = process.env.NODE_ENV === 'production';
+
+// Only import better-sqlite3 in development to avoid native module issues in production
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Database: any = null;
+if (!isProduction) {
+  try {
+    Database = require('better-sqlite3');
+  } catch {
+    console.warn('better-sqlite3 not available - this is expected in production');
+  }
+}
 const hasTursoCredentials = process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN;
 
 // Database adapter interface

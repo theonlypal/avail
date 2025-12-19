@@ -9,13 +9,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAppointmentById } from '@/lib/db-crm';
 import { neon } from '@neondatabase/serverless';
-import Database from 'better-sqlite3';
 import path from 'path';
 
-const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
 const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
 
-function getSqliteDb(): Database.Database {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Database: any = null;
+if (!IS_PRODUCTION) {
+  try { Database = require('better-sqlite3'); } catch { /* expected in production */ }
+}
+
+function getSqliteDb(): any {
   const DB_PATH = path.join(process.cwd(), 'data', 'leadly.db');
   return new Database(DB_PATH);
 }

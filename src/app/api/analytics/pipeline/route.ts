@@ -11,11 +11,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
-import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Database: any = null;
+if (!IS_PRODUCTION) {
+  try { Database = require('better-sqlite3'); } catch { /* expected in production */ }
+}
 
 const sql: NeonQueryFunction<false, false> | null = IS_PRODUCTION && process.env.POSTGRES_URL
   ? neon(process.env.POSTGRES_URL)
@@ -23,9 +28,10 @@ const sql: NeonQueryFunction<false, false> | null = IS_PRODUCTION && process.env
 
 const DB_PATH = path.join(process.cwd(), 'data', 'leadly.db');
 
-let sqliteDb: Database.Database | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let sqliteDb: any = null;
 
-function getSqliteDb(): Database.Database {
+function getSqliteDb(): any {
   if (!sqliteDb) {
     if (fs.existsSync(DB_PATH)) {
       sqliteDb = new Database(DB_PATH);

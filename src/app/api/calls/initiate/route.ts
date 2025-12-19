@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
-import Database from 'better-sqlite3';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -8,7 +7,13 @@ const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'pr
 const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
 const sql = IS_PRODUCTION && postgresUrl ? neon(postgresUrl) : null;
 
-function getSqliteDb(): Database.Database {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Database: any = null;
+if (!IS_PRODUCTION) {
+  try { Database = require('better-sqlite3'); } catch { /* expected in production */ }
+}
+
+function getSqliteDb(): any {
   const DB_PATH = path.join(process.cwd(), 'data', 'leadly.db');
   return new Database(DB_PATH);
 }

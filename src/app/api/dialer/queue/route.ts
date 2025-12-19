@@ -6,22 +6,28 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
 const DB_PATH = path.join(process.cwd(), 'data', 'leadly.db');
 const DATA_DIR = path.join(process.cwd(), 'data');
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Database: any = null;
+if (!IS_PRODUCTION) {
+  try { Database = require('better-sqlite3'); } catch { /* expected in production */ }
+}
 
 if (!IS_PRODUCTION && !fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-let db: Database.Database | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let db: any = null;
 
-function getDb(): Database.Database {
+function getDb(): any {
   if (!db) {
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');

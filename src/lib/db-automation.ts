@@ -9,13 +9,23 @@
  */
 
 import { neon } from '@neondatabase/serverless';
-import Database from 'better-sqlite3';
 import path from 'path';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
 const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
 
-export function getAutomationDb(): Database.Database {
+// Only import better-sqlite3 in development to avoid native module issues in production
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Database: any = null;
+if (!IS_PRODUCTION) {
+  try {
+    Database = require('better-sqlite3');
+  } catch {
+    console.warn('better-sqlite3 not available - this is expected in production');
+  }
+}
+
+export function getAutomationDb(): any {
   const DB_PATH = path.join(process.cwd(), 'data', 'leadly.db');
   const db = new Database(DB_PATH);
 
