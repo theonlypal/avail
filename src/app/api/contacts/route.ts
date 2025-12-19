@@ -52,68 +52,29 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Try to query with businesses table, fall back to just contacts if it doesn't exist
-    try {
-      let result;
-      if (search) {
-        const searchPattern = `%${search}%`;
-        result = await pgPool.query(`
-          SELECT
-            c.*,
-            b.name as business_name,
-            b.industry as business_industry
-          FROM contacts c
-          LEFT JOIN businesses b ON c.business_id = b.id
-          WHERE c.first_name ILIKE $1
-             OR c.last_name ILIKE $1
-             OR c.email ILIKE $1
-             OR c.phone ILIKE $1
-             OR b.name ILIKE $1
-          ORDER BY c.created_at DESC
-          LIMIT $2 OFFSET $3
-        `, [searchPattern, limit, offset]);
-      } else {
-        result = await pgPool.query(`
-          SELECT
-            c.*,
-            b.name as business_name,
-            b.industry as business_industry
-          FROM contacts c
-          LEFT JOIN businesses b ON c.business_id = b.id
-          ORDER BY c.created_at DESC
-          LIMIT $1 OFFSET $2
-        `, [limit, offset]);
-      }
-      return NextResponse.json({ contacts: result.rows });
-    } catch (joinError: any) {
-      // If businesses table doesn't exist, fall back to just contacts
-      if (joinError.code === '42P01') {
-        console.warn('[Contacts API] businesses table does not exist, returning contacts only');
-        let result;
-        if (search) {
-          const searchPattern = `%${search}%`;
-          result = await pgPool.query(`
-            SELECT c.*
-            FROM contacts c
-            WHERE c.first_name ILIKE $1
-               OR c.last_name ILIKE $1
-               OR c.email ILIKE $1
-               OR c.phone ILIKE $1
-            ORDER BY c.created_at DESC
-            LIMIT $2 OFFSET $3
-          `, [searchPattern, limit, offset]);
-        } else {
-          result = await pgPool.query(`
-            SELECT c.*
-            FROM contacts c
-            ORDER BY c.created_at DESC
-            LIMIT $1 OFFSET $2
-          `, [limit, offset]);
-        }
-        return NextResponse.json({ contacts: result.rows });
-      }
-      throw joinError;
+    // Query contacts without join - simpler and more robust across schema variations
+    let result;
+    if (search) {
+      const searchPattern = `%${search}%`;
+      result = await pgPool.query(`
+        SELECT *
+        FROM contacts
+        WHERE first_name ILIKE $1
+           OR last_name ILIKE $1
+           OR email ILIKE $1
+           OR phone ILIKE $1
+        ORDER BY created_at DESC
+        LIMIT $2 OFFSET $3
+      `, [searchPattern, limit, offset]);
+    } else {
+      result = await pgPool.query(`
+        SELECT *
+        FROM contacts
+        ORDER BY created_at DESC
+        LIMIT $1 OFFSET $2
+      `, [limit, offset]);
     }
+    return NextResponse.json({ contacts: result.rows });
 
   } catch (error: any) {
     console.error('❌ GET /api/contacts error:', error);
