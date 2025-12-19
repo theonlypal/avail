@@ -11,11 +11,12 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
 
-// Neon SQL client for production
-const sql: NeonQueryFunction<false, false> | null = IS_PRODUCTION && process.env.POSTGRES_URL
-  ? neon(process.env.POSTGRES_URL)
+// Neon SQL client for production (works with Railway Postgres too)
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+const sql: NeonQueryFunction<false, false> | null = IS_PRODUCTION && postgresUrl
+  ? neon(postgresUrl)
   : null;
 
 // SQLite setup (local development)
