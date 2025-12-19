@@ -5,11 +5,21 @@
  */
 
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
-import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
+
+// Only import better-sqlite3 in development to avoid native module issues in production
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Database: any = null;
+if (!IS_PRODUCTION) {
+  try {
+    Database = require('better-sqlite3');
+  } catch {
+    console.warn('better-sqlite3 not available - this is expected in production');
+  }
+}
 
 // Neon provides POSTGRES_URL, also check DATABASE_URL for flexibility
 const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
@@ -27,9 +37,10 @@ if (!IS_PRODUCTION && !fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-let sqliteDb: Database.Database | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let sqliteDb: any = null;
 
-function getSqliteDb(): Database.Database {
+function getSqliteDb(): any {
   if (!sqliteDb) {
     sqliteDb = new Database(DB_PATH);
     sqliteDb.pragma('journal_mode = WAL');
@@ -238,7 +249,7 @@ export const db = {
 };
 
 // For backwards compatibility with existing code
-export function getDb(): Database.Database {
+export function getDb(): any {
   if (IS_PRODUCTION) {
     throw new Error('Cannot use getDb() in production - use db.query() instead');
   }
