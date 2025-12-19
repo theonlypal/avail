@@ -29,7 +29,7 @@ let pgPool: Pool | null = null;
 if (IS_PRODUCTION && postgresUrl) {
   pgPool = new Pool({
     connectionString: postgresUrl,
-    ssl: false, // Railway internal connections don't need SSL
+    ssl: { rejectUnauthorized: false }, // Railway internal connections don't need SSL
     max: 10,
     idleTimeoutMillis: 30000,
   });

@@ -30,7 +30,7 @@ export async function GET() {
     // Create pg Pool for Railway Postgres
     const pool = new Pool({
       connectionString: postgresUrl,
-      ssl: false, // Railway internal connections don't need SSL
+      ssl: { rejectUnauthorized: false }, // Railway internal connections don't need SSL
       max: 5,
       idleTimeoutMillis: 30000,
     });

@@ -37,7 +37,7 @@ let pgPool: Pool | null = null;
 if (IS_PRODUCTION && postgresUrl) {
   pgPool = new Pool({
     connectionString: postgresUrl,
-    ssl: false,
+    ssl: { rejectUnauthorized: false },
     max: 10,
     idleTimeoutMillis: 30000,
   });
