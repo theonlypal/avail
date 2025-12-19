@@ -197,10 +197,21 @@ export async function initializePostgresSchema() {
 }
 
 /**
+ * Convert SQLite-style ? placeholders to PostgreSQL-style $1, $2, etc.
+ */
+function convertPlaceholders(query: string): string {
+  let index = 0;
+  return query.replace(/\?/g, () => `$${++index}`);
+}
+
+/**
  * Export unified database interface
  *
  * For production (Railway Postgres), uses pg Pool.
  * For development (SQLite), uses better-sqlite3.
+ *
+ * Note: Queries can use ? placeholders (SQLite-style) and they will be
+ * automatically converted to $1, $2, etc. for PostgreSQL in production.
  */
 export const db = {
   isProduction: IS_PRODUCTION,
@@ -209,8 +220,9 @@ export const db = {
   async query(queryString: string, params: any[] = []): Promise<any[]> {
     if (IS_PRODUCTION) {
       if (!pgPool) throw new Error('Postgres connection not available');
-      // pg uses $1, $2, etc. for parameters
-      const result = await pgPool.query(queryString, params);
+      // Convert ? placeholders to $1, $2, etc. for PostgreSQL
+      const pgQuery = convertPlaceholders(queryString);
+      const result = await pgPool.query(pgQuery, params);
       return result.rows;
     } else {
       // SQLite query
@@ -223,7 +235,9 @@ export const db = {
   async run(queryString: string, params: any[] = []): Promise<void> {
     if (IS_PRODUCTION) {
       if (!pgPool) throw new Error('Postgres connection not available');
-      await pgPool.query(queryString, params);
+      // Convert ? placeholders to $1, $2, etc. for PostgreSQL
+      const pgQuery = convertPlaceholders(queryString);
+      await pgPool.query(pgQuery, params);
     } else {
       const sqliteDb = getSqliteDb();
       const stmt = sqliteDb.prepare(queryString);
@@ -234,7 +248,9 @@ export const db = {
   async get(queryString: string, params: any[] = []): Promise<any | undefined> {
     if (IS_PRODUCTION) {
       if (!pgPool) throw new Error('Postgres connection not available');
-      const result = await pgPool.query(queryString, params);
+      // Convert ? placeholders to $1, $2, etc. for PostgreSQL
+      const pgQuery = convertPlaceholders(queryString);
+      const result = await pgPool.query(pgQuery, params);
       return result.rows[0];
     } else {
       const sqliteDb = getSqliteDb();
