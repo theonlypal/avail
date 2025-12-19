@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Loader2, ArrowRight, Lightbulb } from "lucide-react";
+import { Sparkles, Loader2, Lightbulb, Search, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ButtonShiny } from "@/components/ui/button-shiny";
+import { MagicCard } from "@/components/ui/magic-card";
 
 interface AISearchBarProps {
   onSearchComplete?: () => void;
@@ -93,72 +92,82 @@ export function AISearchBar({ onSearchComplete }: AISearchBarProps) {
   };
 
   return (
-    <Card className="rounded-3xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/5 to-blue-500/5 p-6 shadow-lg shadow-cyan-500/10">
-      <div className="flex items-start gap-4 mb-4">
-        <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
-          <Sparkles className="h-6 w-6 text-white" />
+    <MagicCard
+      className="p-6 bg-slate-900/40"
+      gradientFrom="rgba(6, 182, 212, 0.08)"
+      gradientTo="rgba(59, 130, 246, 0.04)"
+      gradientSize={400}
+    >
+      <div className="flex items-start gap-4 mb-6">
+        <div className="relative flex-shrink-0">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/15 to-blue-600/15 border border-cyan-500/20 flex items-center justify-center">
+            <Sparkles className="h-6 w-6 text-cyan-400" />
+          </div>
+          <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 blur-sm -z-10" />
         </div>
 
         <div className="flex-1">
           <h2 className="text-xl font-bold text-white mb-1">
             AI Lead Search Engine
           </h2>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500">
             Describe the businesses you want to find in natural language. Our AI will search the web and populate your leads table.
           </p>
         </div>
       </div>
 
       {/* Search Input */}
-      <div className="flex gap-3 mb-4">
+      <div className="flex gap-3 mb-5">
         <div className="flex-1 relative">
-          <Input
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600" />
+          <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder='Try: "Find 25 HVAC companies in San Diego with less than 4.5 star ratings"'
-            className="h-14 pl-4 pr-4 bg-white/5 border-white/20 text-white placeholder:text-slate-500 focus:border-cyan-500 text-base"
+            className="w-full h-14 pl-12 pr-4 bg-slate-950/60 border border-white/[0.04] rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/30 focus:ring-1 focus:ring-cyan-500/20 transition-all text-base"
             disabled={isSearching}
           />
         </div>
 
-        <Button
+        <ButtonShiny
           onClick={handleSearch}
           disabled={isSearching || !query.trim()}
-          className="h-14 px-8 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold shadow-lg shadow-cyan-500/30 disabled:opacity-50"
+          variant="cyan"
+          className="h-14 px-8"
         >
           {isSearching ? (
-            <>
-              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
               Searching...
-            </>
+            </span>
           ) : (
-            <>
-              <Sparkles className="h-5 w-5 mr-2" />
+            <span className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
               Search
-            </>
+            </span>
           )}
-        </Button>
+        </ButtonShiny>
       </div>
 
       {/* Search Results */}
       {searchResults && (
         <div
-          className={`mb-4 p-4 rounded-2xl border ${
+          className={`mb-5 p-4 rounded-xl border ${
             searchResults.success
-              ? "bg-green-500/10 border-green-500/30"
-              : "bg-red-500/10 border-red-500/30"
+              ? "bg-emerald-500/10 border-emerald-500/20"
+              : "bg-red-500/10 border-red-500/20"
           }`}
         >
           <p
             className={`text-sm font-medium ${
-              searchResults.success ? "text-green-400" : "text-red-400"
+              searchResults.success ? "text-emerald-400" : "text-red-400"
             }`}
           >
             {searchResults.message}
           </p>
           {searchResults.success && searchResults.leadsAdded !== undefined && (
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Found {searchResults.leadsFound} businesses, added {searchResults.leadsAdded} new leads to your table
             </p>
           )}
@@ -166,9 +175,11 @@ export function AISearchBar({ onSearchComplete }: AISearchBarProps) {
       )}
 
       {/* Example Queries */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-sm text-slate-400">
-          <Lightbulb className="h-4 w-4" />
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <div className="w-6 h-6 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+            <Lightbulb className="h-3.5 w-3.5 text-amber-400" />
+          </div>
           <span>Example searches:</span>
         </div>
 
@@ -178,7 +189,7 @@ export function AISearchBar({ onSearchComplete }: AISearchBarProps) {
               key={index}
               onClick={() => handleExampleClick(example)}
               disabled={isSearching}
-              className="text-xs px-3 py-2 rounded-full bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:border-cyan-500/30 hover:text-cyan-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-xs px-3 py-2 rounded-lg bg-slate-950/60 border border-white/[0.04] text-slate-400 hover:bg-slate-900/60 hover:border-cyan-500/20 hover:text-cyan-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {example}
             </button>
@@ -187,20 +198,18 @@ export function AISearchBar({ onSearchComplete }: AISearchBarProps) {
       </div>
 
       {/* Feature Highlights */}
-      <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-3 gap-4 text-center">
-        <div>
-          <div className="text-xs text-slate-500 mb-1">Powered by</div>
-          <div className="text-sm font-semibold text-cyan-400">Claude AI</div>
-        </div>
-        <div>
-          <div className="text-xs text-slate-500 mb-1">Data Sources</div>
-          <div className="text-sm font-semibold text-cyan-400">Web Search</div>
-        </div>
-        <div>
-          <div className="text-xs text-slate-500 mb-1">Auto-Scoring</div>
-          <div className="text-sm font-semibold text-cyan-400">Enabled</div>
-        </div>
+      <div className="mt-5 pt-5 border-t border-white/[0.04] grid grid-cols-3 gap-4">
+        {[
+          { label: "Powered by", value: "Claude AI", color: "text-cyan-400" },
+          { label: "Data Sources", value: "Web Search", color: "text-purple-400" },
+          { label: "Auto-Scoring", value: "Enabled", color: "text-emerald-400" },
+        ].map((item) => (
+          <div key={item.label} className="text-center p-3 rounded-xl bg-slate-950/40 border border-white/[0.03]">
+            <div className="text-[10px] text-slate-600 uppercase tracking-wider mb-1">{item.label}</div>
+            <div className={`text-sm font-semibold ${item.color}`}>{item.value}</div>
+          </div>
+        ))}
       </div>
-    </Card>
+    </MagicCard>
   );
 }

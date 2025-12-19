@@ -13,12 +13,13 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ButtonShiny } from "@/components/ui/button-shiny";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ClipboardList, CheckCircle2, Calendar, Mail, MessageSquare, ExternalLink } from "lucide-react";
+import { ClipboardList, CheckCircle2, Calendar, Mail, MessageSquare, ExternalLink, ArrowRight } from "lucide-react";
 import { CalendlyEmbed } from "@/components/calendar/calendly-embed";
 
 interface IntakeFormData {
@@ -197,9 +198,9 @@ function IntakeFormContent() {
 
   if (submitted) {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-purple-500/10 via-transparent to-transparent" />
+      <div className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-500/[0.03] via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-purple-500/[0.03] via-transparent to-transparent" />
 
         <main className="relative mx-auto max-w-4xl px-6 py-12">
           <Card className="border-green-500/50 bg-gradient-to-br from-green-500/20 to-emerald-500/20">
@@ -245,12 +246,13 @@ function IntakeFormContent() {
                       <p className="text-sm text-slate-400">Explore AVAIL customized for {formData.company}</p>
                     </div>
                   </div>
-                  <a
-                    href={demoUrl}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-lg text-white font-medium hover:from-blue-700 hover:to-cyan-700 transition-all w-full justify-center"
-                  >
-                    View Your Custom Demo
-                    <ExternalLink className="h-4 w-4" />
+                  <a href={demoUrl} className="block">
+                    <ButtonShiny variant="cyan" className="w-full">
+                      <span className="flex items-center gap-2">
+                        View Your Custom Demo
+                        <ExternalLink className="h-4 w-4" />
+                      </span>
+                    </ButtonShiny>
                   </a>
                 </div>
               )}
@@ -297,13 +299,14 @@ function IntakeFormContent() {
                       <p className="text-slate-300 mb-4">
                         Our team will reach out within 24 hours to schedule your call.
                       </p>
-                      <a
-                        href="/booking"
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-lg text-white font-medium hover:from-blue-700 hover:to-cyan-700 transition-all"
-                      >
-                        <Calendar className="h-4 w-4" />
-                        Schedule Now
-                        <ExternalLink className="h-4 w-4" />
+                      <a href="/booking">
+                        <ButtonShiny variant="cyan">
+                          <span className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            Schedule Now
+                            <ExternalLink className="h-4 w-4" />
+                          </span>
+                        </ButtonShiny>
                       </a>
                       <p className="text-sm text-slate-500 mt-4">
                         You can also call us directly at {process.env.NEXT_PUBLIC_BUSINESS_PHONE_NUMBER || '+1 (213) 555-0120'}
@@ -326,10 +329,10 @@ function IntakeFormContent() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
+    <div className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
       {/* Background Effects */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-purple-500/10 via-transparent to-transparent" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-500/[0.03] via-transparent to-transparent" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-purple-500/[0.03] via-transparent to-transparent" />
 
       <main className="relative mx-auto max-w-4xl px-6 py-12">
         {/* Header */}
@@ -350,7 +353,7 @@ function IntakeFormContent() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Contact Information */}
-          <Card className="border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02]">
+          <Card className="border-white/[0.04] bg-slate-900/40">
             <CardHeader>
               <CardTitle className="text-2xl text-white">Contact Information</CardTitle>
               <CardDescription className="text-slate-400">
@@ -410,7 +413,7 @@ function IntakeFormContent() {
           </Card>
 
           {/* Business Information */}
-          <Card className="border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02]">
+          <Card className="border-white/[0.04] bg-slate-900/40">
             <CardHeader>
               <CardTitle className="text-2xl text-white">Business Information</CardTitle>
               <CardDescription className="text-slate-400">
@@ -482,7 +485,7 @@ function IntakeFormContent() {
           </Card>
 
           {/* Business Metrics */}
-          <Card className="border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02]">
+          <Card className="border-white/[0.04] bg-slate-900/40">
             <CardHeader>
               <CardTitle className="text-2xl text-white">Business Metrics</CardTitle>
               <CardDescription className="text-slate-400">
@@ -517,7 +520,7 @@ function IntakeFormContent() {
           </Card>
 
           {/* Pain Points */}
-          <Card className="border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02]">
+          <Card className="border-white/[0.04] bg-slate-900/40">
             <CardHeader>
               <CardTitle className="text-2xl text-white">What are your biggest challenges?</CardTitle>
               <CardDescription className="text-slate-400">
@@ -547,7 +550,7 @@ function IntakeFormContent() {
           </Card>
 
           {/* Preferred Time */}
-          <Card className="border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02]">
+          <Card className="border-white/[0.04] bg-slate-900/40">
             <CardHeader>
               <CardTitle className="text-2xl text-white">When's the best time to reach you?</CardTitle>
             </CardHeader>
@@ -562,13 +565,17 @@ function IntakeFormContent() {
           </Card>
 
           {/* Submit Button */}
-          <Button
+          <ButtonShiny
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold text-lg py-6"
+            variant="cyan"
+            className="w-full text-lg py-6"
           >
-            {isSubmitting ? 'Submitting...' : 'Book My Call'}
-          </Button>
+            <span className="flex items-center gap-2">
+              {isSubmitting ? 'Submitting...' : 'Book My Call'}
+              {!isSubmitting && <ArrowRight className="h-5 w-5" />}
+            </span>
+          </ButtonShiny>
 
           <p className="text-center text-sm text-slate-500">
             By submitting, you agree to receive communication from AVAIL. We respect your privacy.

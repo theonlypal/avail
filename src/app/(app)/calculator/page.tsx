@@ -11,6 +11,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ButtonShiny } from "@/components/ui/button-shiny";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -285,10 +286,10 @@ export default function ROICalculatorPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
+    <div className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
       {/* Background Effects */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-purple-500/10 via-transparent to-transparent" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-500/[0.03] via-transparent to-transparent" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-purple-500/[0.03] via-transparent to-transparent" />
 
       <main className="relative mx-auto max-w-6xl px-6 py-12 space-y-8">
         {/* Header */}
@@ -307,7 +308,7 @@ export default function ROICalculatorPage() {
         </div>
 
         {/* Business Type Presets */}
-        <Card className="border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02]">
+        <Card className="border-white/[0.04] bg-slate-900/40">
           <CardHeader>
             <CardTitle className="text-2xl text-white">Select Your Business Type</CardTitle>
             <CardDescription className="text-slate-400">
@@ -327,7 +328,7 @@ export default function ROICalculatorPage() {
                     className={`p-4 rounded-xl border text-left transition-all ${
                       isSelected
                         ? `bg-gradient-to-br ${preset.color} border-white/30 shadow-lg`
-                        : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20'
+                        : 'border-white/[0.04] bg-slate-900/50 hover:bg-slate-900/70 hover:border-white/[0.08]'
                     }`}
                   >
                     <Icon className={`w-6 h-6 mb-2 ${isSelected ? 'text-white' : 'text-slate-400'}`} />
@@ -345,7 +346,7 @@ export default function ROICalculatorPage() {
         </Card>
 
         {/* Input Form */}
-        <Card className="border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02]">
+        <Card className="border-white/[0.04] bg-slate-900/40">
           <CardHeader>
             <CardTitle className="text-2xl text-white">Your Business Metrics</CardTitle>
             <CardDescription className="text-slate-400">
@@ -485,13 +486,16 @@ export default function ROICalculatorPage() {
               </div>
             </div>
 
-            <Button
+            <ButtonShiny
               onClick={calculateROI}
-              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold text-lg py-6"
+              variant="emerald"
+              className="w-full text-lg py-6"
             >
-              <Calculator className="mr-2 h-5 w-5" />
-              Calculate Your ROI
-            </Button>
+              <span className="flex items-center gap-2">
+                <Calculator className="h-5 w-5" />
+                Calculate Your ROI
+              </span>
+            </ButtonShiny>
           </CardContent>
         </Card>
 
@@ -499,7 +503,7 @@ export default function ROICalculatorPage() {
         {results && (
           <div className="space-y-6 animate-fade-in">
             {/* Savings Breakdown */}
-            <Card className="border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02]">
+            <Card className="border-white/[0.04] bg-slate-900/40">
               <CardHeader>
                 <CardTitle className="text-2xl text-white">Your Potential Monthly Savings</CardTitle>
                 <CardDescription className="text-slate-400">
@@ -564,13 +568,16 @@ export default function ROICalculatorPage() {
                   </p>
                 </div>
 
-                <Button
+                <ButtonShiny
                   onClick={handleBookCall}
-                  className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-semibold text-lg py-6"
+                  variant="cyan"
+                  className="w-full text-lg py-6"
                 >
-                  Book a Call to Get Started
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
+                  <span className="flex items-center gap-2">
+                    Book a Call to Get Started
+                    <ArrowRight className="h-5 w-5" />
+                  </span>
+                </ButtonShiny>
 
                 <p className="text-center text-xs text-slate-500">
                   No pricing shown here. We'll discuss your custom package on the call.

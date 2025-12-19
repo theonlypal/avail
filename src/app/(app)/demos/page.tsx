@@ -36,6 +36,7 @@ import {
   Star,
   Share2,
 } from "lucide-react";
+import { ButtonShiny } from "@/components/ui/button-shiny";
 
 // Live demos that actually work
 const liveFeatures = [
@@ -180,10 +181,10 @@ export default function DemosPage() {
   const [hoveredFeature, setHoveredFeature] = useState<string | null>(null);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
+    <div className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
       {/* Background Effects */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-500/10 via-transparent to-transparent" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-purple-500/10 via-transparent to-transparent" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-500/[0.03] via-transparent to-transparent" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-purple-500/[0.03] via-transparent to-transparent" />
 
       <main className="relative mx-auto max-w-7xl px-6 py-12 space-y-16">
 
@@ -220,7 +221,7 @@ export default function DemosPage() {
               { icon: Bot, value: "AI", label: "Powered" },
             ].map((stat) => (
               <div key={stat.label} className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-cyan-500/20">
+                <div className="p-2 rounded-lg bg-cyan-500/15 border border-cyan-500/20">
                   <stat.icon className="h-5 w-5 text-cyan-400" />
                 </div>
                 <div className="text-left">
@@ -254,10 +255,10 @@ export default function DemosPage() {
                 <Link
                   key={demo.id}
                   href={demo.href}
-                  className={`group relative rounded-2xl border bg-gradient-to-br from-white/5 to-white/[0.02] p-8 transition-all duration-300 ${
+                  className={`group relative rounded-2xl border bg-slate-900/40 p-8 transition-all duration-300 ${
                     isHighlight
-                      ? 'border-emerald-500/40 hover:border-emerald-400/60 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-500/20'
-                      : 'border-white/10 hover:border-white/20'
+                      ? 'border-emerald-500/30 hover:border-emerald-400/50 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-500/10'
+                      : 'border-white/[0.04] hover:border-white/[0.08]'
                   }`}
                 >
                   {/* Gradient overlay on hover */}
@@ -332,7 +333,7 @@ export default function DemosPage() {
               <Link
                 key={feature.id}
                 href={feature.href}
-                className="group relative rounded-xl border border-white/10 bg-slate-900/50 p-6 hover:border-cyan-500/30 hover:bg-slate-900/80 transition-all duration-300"
+                className="group relative rounded-xl border border-white/[0.04] bg-slate-900/50 p-6 hover:border-cyan-500/20 hover:bg-slate-900/70 transition-all duration-300"
                 onMouseEnter={() => setHoveredFeature(feature.id)}
                 onMouseLeave={() => setHoveredFeature(null)}
               >
@@ -391,7 +392,7 @@ export default function DemosPage() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="group flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800/50 border border-white/10 hover:border-cyan-500/30 hover:bg-slate-800 transition-all"
+                className="group flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900/50 border border-white/[0.04] hover:border-cyan-500/20 hover:bg-slate-900/70 transition-all"
               >
                 <link.icon className="h-4 w-4 text-slate-400 group-hover:text-cyan-400" />
                 <span className="text-sm text-slate-300 group-hover:text-white">{link.title}</span>
@@ -401,10 +402,10 @@ export default function DemosPage() {
         </section>
 
         {/* CTA Section */}
-        <section className="relative overflow-hidden rounded-3xl border border-cyan-400/30 bg-gradient-to-br from-blue-600/20 via-purple-600/10 to-cyan-600/20 p-12 md:p-16">
+        <section className="relative overflow-hidden rounded-3xl border border-cyan-400/20 bg-slate-900/40 p-12 md:p-16">
           {/* Background effects */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-500/20 via-transparent to-transparent" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-500/20 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-500/10 via-transparent to-transparent" />
 
           <div className="relative text-center space-y-6 max-w-2xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold">
@@ -415,20 +416,22 @@ export default function DemosPage() {
             </p>
 
             <div className="flex flex-wrap gap-4 justify-center pt-4">
-              <Link
-                href="/dashboard"
-                className="group inline-flex items-center rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-8 py-4 text-lg font-bold shadow-xl shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all duration-300"
-              >
-                <Rocket className="mr-2 h-5 w-5" />
-                Open Dashboard
-                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              <Link href="/dashboard">
+                <ButtonShiny variant="cyan" className="px-8 py-4 text-lg">
+                  <span className="flex items-center gap-2">
+                    <Rocket className="h-5 w-5" />
+                    Open Dashboard
+                    <ArrowRight className="h-5 w-5" />
+                  </span>
+                </ButtonShiny>
               </Link>
-              <Link
-                href="/intake"
-                className="inline-flex items-center rounded-xl border-2 border-white/30 bg-white/5 px-8 py-4 text-lg font-bold hover:bg-white/10 hover:border-white/50 transition-all duration-300"
-              >
-                <FileText className="mr-2 h-5 w-5" />
-                Try Intake Form
+              <Link href="/intake">
+                <ButtonShiny variant="emerald" className="px-8 py-4 text-lg">
+                  <span className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Try Intake Form
+                  </span>
+                </ButtonShiny>
               </Link>
             </div>
           </div>
@@ -442,7 +445,7 @@ export default function DemosPage() {
             { label: "Automation Actions", value: "5+", color: "text-orange-400" },
             { label: "Real Database", value: "Yes", color: "text-green-400" },
           ].map((stat) => (
-            <div key={stat.label} className="text-center p-4 rounded-xl bg-slate-900/30 border border-white/5">
+            <div key={stat.label} className="text-center p-4 rounded-xl bg-slate-900/40 border border-white/[0.03]">
               <div className={`text-3xl font-bold ${stat.color}`}>{stat.value}</div>
               <div className="text-sm text-slate-400 mt-1">{stat.label}</div>
             </div>

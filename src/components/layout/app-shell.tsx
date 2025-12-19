@@ -16,7 +16,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { isCollapsed, toggle, expand } = useSidebarCollapse();
 
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen w-full bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
       <Sidebar />
       <Sheet open={navOpen} onOpenChange={setNavOpen}>
         <SheetTrigger asChild className="lg:hidden absolute left-4 top-4 z-50">
@@ -28,11 +28,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Sidebar />
         </SheetContent>
       </Sheet>
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex">
+        <div className="flex flex-1 flex-col">
           <TopBar />
-          <div className="flex flex-1 overflow-hidden">
-            <main className="flex-1 overflow-y-auto px-6 py-6">{children}</main>
+          <div className="flex flex-1">
+            {/* Add top padding to account for fixed header */}
+            <main className="flex-1 px-6 py-6 pt-24">{children}</main>
             {/* Show icon bar when collapsed, full sidebar when expanded */}
             {isCollapsed ? (
               <CopilotIconBar onExpand={expand} />

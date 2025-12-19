@@ -28,8 +28,6 @@ import {
   Mail,
   DollarSign,
   Zap,
-  ArrowUpRight,
-  ArrowDownRight,
 } from "lucide-react";
 import type { LeadFilter } from "@/types";
 import { fetchLeads } from "@/lib/leads-client";
@@ -38,7 +36,8 @@ import { AISearchBar } from "@/components/dashboard/ai-search-bar";
 import { FolderManager } from "@/components/dashboard/folder-manager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
+import { MagicCard, StatCard, CompactStatCard } from "@/components/ui/magic-card";
+import { ButtonShiny } from "@/components/ui/button-shiny";
 
 interface CopilotMessage {
   id: string;
@@ -273,183 +272,148 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-screen bg-slate-950">
+      {/* Subtle Background Effects */}
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-500/[0.03] via-transparent to-transparent pointer-events-none" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-blue-500/[0.03] via-transparent to-transparent pointer-events-none" />
+
       {/* Main Content */}
-      <div className="space-y-5 pb-6">
-        {/* Refined Header */}
-        <div className="bg-gradient-to-r from-slate-900/50 to-slate-800/50 border border-white/5 rounded-2xl p-6">
+      <div className="relative space-y-6 pb-6">
+        {/* Header - Dark premium */}
+        <MagicCard className="p-6 bg-slate-900/40" gradientFrom="rgba(6, 182, 212, 0.08)" gradientTo="transparent">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center">
-                <Sparkles className="h-6 w-6 text-cyan-400" />
+              <div className="relative">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/15 to-blue-600/15 border border-cyan-500/20 flex items-center justify-center">
+                  <Sparkles className="h-5 w-5 text-cyan-400" />
+                </div>
+                <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 blur-sm -z-10" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white">
-                  AVAIL
-                </h1>
-                <p className="text-sm text-slate-400">
-                  AI-Powered Lead Intelligence
-                </p>
+                <h1 className="text-xl font-semibold text-white">Lead Dashboard</h1>
+                <p className="text-sm text-slate-600">AI-Powered Lead Intelligence</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <Button
+              <ButtonShiny
                 onClick={() => setShowDiscoveryModal(true)}
-                className="h-10 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-lg shadow-emerald-500/20"
+                variant="emerald"
+                className="h-10 px-5"
               >
-                <Target className="h-4 w-4 mr-2" />
-                Discover Leads
-              </Button>
-              <Button
+                <span className="flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  Discover Leads
+                </span>
+              </ButtonShiny>
+              <ButtonShiny
                 onClick={() => setCopilotOpen(!copilotOpen)}
-                className="h-10 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white shadow-lg shadow-cyan-500/20"
+                variant="cyan"
+                className="h-10 px-5"
               >
-                <Bot className="h-4 w-4 mr-2" />
-                AI Copilot
-              </Button>
+                <span className="flex items-center gap-2">
+                  <Bot className="h-4 w-4" />
+                  AI Copilot
+                </span>
+              </ButtonShiny>
               <Button
                 onClick={() => setShowFolderManager(!showFolderManager)}
                 variant="outline"
-                className="h-10 border-white/10 text-slate-300 hover:bg-white/5 hover:text-white"
+                className="h-10 border-white/[0.08] text-slate-400 hover:bg-white/5 hover:text-white hover:border-white/15 transition-all"
               >
                 <Folder className="h-4 w-4 mr-2" />
                 Folders
               </Button>
               <Button
                 variant="outline"
-                className="h-10 border-white/10 text-slate-300 hover:bg-white/5 hover:text-white"
+                className="h-10 w-10 p-0 border-white/[0.08] text-slate-400 hover:bg-white/5 hover:text-white hover:border-white/15 transition-all"
               >
                 <Settings className="h-4 w-4" />
               </Button>
             </div>
           </div>
-        </div>
+        </MagicCard>
 
-        {/* Primary Metrics Grid */}
+        {/* Primary Metrics Grid - Premium stat cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Link href="/crm/leads" className="bg-slate-900/50 border border-white/10 rounded-xl p-5 hover:border-cyan-500/30 transition-all group">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Leads</span>
-              <Target className="h-4 w-4 text-cyan-400" />
-            </div>
-            <div className="text-3xl font-bold text-white group-hover:text-cyan-400 transition-colors">{stats.total}</div>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-slate-500">Active in pipeline</span>
-              {stats.thisWeek > 0 && (
-                <span className="text-xs text-emerald-400 flex items-center gap-0.5">
-                  <ArrowUpRight className="h-3 w-3" />
-                  +{stats.thisWeek} this week
-                </span>
-              )}
-            </div>
-          </Link>
+          <StatCard
+            icon={<Target className="h-4 w-4" />}
+            title="Total Leads"
+            value={stats.total}
+            subtitle="Active in pipeline"
+            trend={stats.thisWeek > 0 ? { value: `+${stats.thisWeek} this week`, positive: true } : undefined}
+            accentColor="cyan"
+            href="/crm/leads"
+          />
 
-          <Link href="/crm/leads" className="bg-slate-900/50 border border-white/10 rounded-xl p-5 hover:border-emerald-500/30 transition-all group">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">High Value</span>
-              <TrendingUp className="h-4 w-4 text-emerald-400" />
-            </div>
-            <div className="text-3xl font-bold text-emerald-400">{stats.highValue}</div>
-            <div className="text-xs text-slate-500 mt-1">Score ≥ 80</div>
-          </Link>
+          <StatCard
+            icon={<TrendingUp className="h-4 w-4" />}
+            title="High Value"
+            value={stats.highValue}
+            subtitle="Score ≥ 80"
+            accentColor="emerald"
+            href="/crm/leads"
+          />
 
-          <Link href="/crm/deals" className="bg-slate-900/50 border border-white/10 rounded-xl p-5 hover:border-green-500/30 transition-all group">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Pipeline Value</span>
-              <DollarSign className="h-4 w-4 text-green-400" />
-            </div>
-            <div className="text-3xl font-bold text-green-400">
-              {formatCurrency(metrics?.deals.totalValue || 0)}
-            </div>
-            <div className="text-xs text-slate-500 mt-1">
-              {metrics?.deals.total || 0} active deals
-            </div>
-          </Link>
+          <StatCard
+            icon={<DollarSign className="h-4 w-4" />}
+            title="Pipeline Value"
+            value={formatCurrency(metrics?.deals.totalValue || 0)}
+            subtitle={`${metrics?.deals.total || 0} active deals`}
+            accentColor="green"
+            href="/crm/deals"
+          />
 
-          <Link href="/crm/contacts" className="bg-slate-900/50 border border-white/10 rounded-xl p-5 hover:border-blue-500/30 transition-all group">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Contacts</span>
-              <Users className="h-4 w-4 text-blue-400" />
-            </div>
-            <div className="text-3xl font-bold text-blue-400">
-              {metrics?.contacts.total || 0}
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-slate-500">In CRM</span>
-              {metrics?.contacts.thisWeek ? (
-                <span className="text-xs text-emerald-400 flex items-center gap-0.5">
-                  <ArrowUpRight className="h-3 w-3" />
-                  +{metrics.contacts.thisWeek} this week
-                </span>
-              ) : null}
-            </div>
-          </Link>
+          <StatCard
+            icon={<Users className="h-4 w-4" />}
+            title="Contacts"
+            value={metrics?.contacts.total || 0}
+            subtitle="In CRM"
+            trend={metrics?.contacts.thisWeek ? { value: `+${metrics.contacts.thisWeek} this week`, positive: true } : undefined}
+            accentColor="blue"
+            href="/crm/contacts"
+          />
         </div>
 
-        {/* Secondary Metrics Row */}
+        {/* Secondary Metrics Row - Compact cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Link href="/inbox" className="bg-slate-900/30 border border-white/5 rounded-xl p-4 hover:border-purple-500/30 transition-all">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                <Mail className="h-5 w-5 text-purple-400" />
-              </div>
-              <div>
-                <div className="text-xl font-bold text-white">{metrics?.messages.total || 0}</div>
-                <div className="text-xs text-slate-500">Messages</div>
-              </div>
-            </div>
-          </Link>
+          <CompactStatCard
+            icon={<Mail className="h-5 w-5" />}
+            title="Messages"
+            value={metrics?.messages.total || 0}
+            accentColor="purple"
+            href="/inbox"
+          />
 
-          <Link href="/crm/activities" className="bg-slate-900/30 border border-white/5 rounded-xl p-4 hover:border-orange-500/30 transition-all">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
-                <Calendar className="h-5 w-5 text-orange-400" />
-              </div>
-              <div>
-                <div className="text-xl font-bold text-white">{metrics?.appointments.upcoming || 0}</div>
-                <div className="text-xs text-slate-500">Upcoming</div>
-              </div>
-            </div>
-          </Link>
+          <CompactStatCard
+            icon={<Calendar className="h-5 w-5" />}
+            title="Upcoming"
+            value={metrics?.appointments.upcoming || 0}
+            accentColor="orange"
+            href="/crm/activities"
+          />
 
-          <Link href="/settings/automations" className="bg-slate-900/30 border border-white/5 rounded-xl p-4 hover:border-amber-500/30 transition-all">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                <Zap className="h-5 w-5 text-amber-400" />
-              </div>
-              <div>
-                <div className="text-xl font-bold text-white">{metrics?.automations.active_rules || 0}</div>
-                <div className="text-xs text-slate-500">Automations</div>
-              </div>
-            </div>
-          </Link>
+          <CompactStatCard
+            icon={<Zap className="h-5 w-5" />}
+            title="Automations"
+            value={metrics?.automations.active_rules || 0}
+            accentColor="amber"
+            href="/settings/automations"
+          />
 
-          <div className="bg-slate-900/30 border border-white/5 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-cyan-400" />
-              </div>
-              <div>
-                <div className="text-xl font-bold text-cyan-400">{stats.avgScore}</div>
-                <div className="text-xs text-slate-500">Avg Score</div>
-              </div>
-            </div>
-          </div>
+          <CompactStatCard
+            icon={<TrendingUp className="h-5 w-5" />}
+            title="Avg Score"
+            value={stats.avgScore}
+            accentColor="cyan"
+          />
 
-          <div className="bg-slate-900/30 border border-white/5 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-emerald-400" />
-              </div>
-              <div>
-                <div className="text-xl font-bold text-emerald-400">
-                  {formatCurrency(metrics?.deals.wonValue || 0)}
-                </div>
-                <div className="text-xs text-slate-500">Won Value</div>
-              </div>
-            </div>
-          </div>
+          <CompactStatCard
+            icon={<DollarSign className="h-5 w-5" />}
+            title="Won Value"
+            value={formatCurrency(metrics?.deals.wonValue || 0)}
+            accentColor="emerald"
+          />
         </div>
 
         {/* AI Search Bar */}
@@ -464,19 +428,19 @@ export default function DashboardPage() {
           />
         )}
 
-        {/* Industry Quick Filters - Refined */}
+        {/* Industry Quick Filters - Dark premium styling */}
         {industries.length > 0 && (
-          <div className="bg-slate-900/30 border border-white/5 rounded-xl p-4">
+          <MagicCard className="p-4 bg-slate-900/40" gradientSize={250}>
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Filter by Industry:</span>
+              <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider">Filter:</span>
               <Button
                 onClick={() => setFilter(undefined)}
                 variant="outline"
                 size="sm"
-                className={`h-8 border-white/10 text-xs ${
+                className={`h-8 text-xs transition-all ${
                   !filter?.industry
-                    ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300"
-                    : "text-slate-300 hover:bg-white/5"
+                    ? "bg-cyan-500/10 border-cyan-500/25 text-cyan-400"
+                    : "border-white/[0.05] bg-slate-950/60 text-slate-500 hover:bg-slate-900/60 hover:text-white hover:border-white/10"
                 }`}
               >
                 All ({stats.total})
@@ -487,28 +451,28 @@ export default function DashboardPage() {
                   onClick={() => setFilter({ ...filter, industry })}
                   variant="outline"
                   size="sm"
-                  className={`h-8 border-white/10 text-xs ${
+                  className={`h-8 text-xs transition-all ${
                     filter?.industry === industry
-                      ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300"
-                      : "text-slate-300 hover:bg-white/5"
+                      ? "bg-cyan-500/10 border-cyan-500/25 text-cyan-400"
+                      : "border-white/[0.05] bg-slate-950/60 text-slate-500 hover:bg-slate-900/60 hover:text-white hover:border-white/10"
                   }`}
                 >
                   {industry} ({count})
                 </Button>
               ))}
             </div>
-          </div>
+          </MagicCard>
         )}
 
-        {/* Main Leads Table - Professional Design */}
-        <div className="rounded-2xl border border-white/10 bg-slate-900/30 overflow-hidden">
-          <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between bg-slate-900/50">
+        {/* Main Leads Table - Dark premium card wrapper */}
+        <MagicCard className="overflow-hidden bg-slate-900/40" gradientSize={350}>
+          <div className="px-6 py-5 border-b border-white/[0.04] flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-white">
                 {selectedFolder ? `Folder: ${selectedFolder}` : "Lead Pipeline"}
               </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                {leads.length} active leads • Click to view or call
+              <p className="text-xs text-slate-600 mt-1">
+                {leads.length} active leads
               </p>
             </div>
 
@@ -517,7 +481,7 @@ export default function DashboardPage() {
                 onClick={() => setFilter(undefined)}
                 variant="outline"
                 size="sm"
-                className="h-8 border-white/10 text-slate-400 hover:text-white hover:bg-white/5"
+                className="h-8 border-white/[0.05] bg-slate-950/60 text-slate-400 hover:text-white hover:bg-slate-900/60"
               >
                 Clear Filters
               </Button>
@@ -528,65 +492,65 @@ export default function DashboardPage() {
             <LeadTable leads={leads} />
           ) : (
             <div className="p-12 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-cyan-500/10 border border-cyan-500/30 mb-4">
-                <Search className="h-8 w-8 text-cyan-400" />
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-cyan-500/10 mb-4">
+                <Search className="h-6 w-6 text-cyan-400" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">No leads yet</h3>
-              <p className="text-slate-400 mb-6 max-w-md mx-auto">
+              <h3 className="text-lg font-semibold text-white mb-2">No leads yet</h3>
+              <p className="text-slate-500 mb-6 max-w-md mx-auto text-sm">
                 Use the AI search bar above to find businesses. Try: "Find me 20 HVAC companies in San Diego with less than 4.5 star ratings"
               </p>
               <div className="flex flex-wrap gap-2 justify-center">
-                <Badge variant="outline" className="border-white/20 text-slate-400">
-                  💡 "dental practices in Austin"
+                <Badge variant="outline" className="border-white/[0.08] text-slate-500 text-xs">
+                  "dental practices in Austin"
                 </Badge>
-                <Badge variant="outline" className="border-white/20 text-slate-400">
-                  💡 "restaurants in Chicago with poor reviews"
+                <Badge variant="outline" className="border-white/[0.08] text-slate-500 text-xs">
+                  "restaurants in Chicago with poor reviews"
                 </Badge>
-                <Badge variant="outline" className="border-white/20 text-slate-400">
-                  💡 "plumbers in Phoenix without websites"
+                <Badge variant="outline" className="border-white/[0.08] text-slate-500 text-xs">
+                  "plumbers in Phoenix without websites"
                 </Badge>
               </div>
             </div>
           )}
-        </div>
+        </MagicCard>
 
-        {/* Industry Breakdown (bottom section) - Cleaner Design */}
+        {/* Industry Breakdown - Dark premium grid */}
         {industries.length > 0 && (
-          <div className="rounded-2xl border border-white/10 bg-slate-900/30 p-6">
-            <h3 className="text-base font-semibold text-white mb-4 uppercase tracking-wide">Industry Distribution</h3>
+          <MagicCard className="p-6 bg-slate-900/40" gradientSize={300}>
+            <h3 className="text-sm font-semibold text-slate-500 mb-4 uppercase tracking-wider">Industry Distribution</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               {industries.map(([industry, count]) => (
                 <button
                   key={industry}
                   onClick={() => setFilter({ ...filter, industry })}
-                  className="rounded-xl border border-white/10 bg-slate-900/50 p-4 hover:bg-slate-800/50 hover:border-cyan-500/40 transition-all text-left group"
+                  className="rounded-xl border border-white/[0.03] bg-slate-950/60 p-4 hover:bg-slate-900/60 hover:border-cyan-500/20 transition-all text-left group"
                 >
-                  <div className="text-xs font-medium text-slate-300 group-hover:text-white transition-colors">{industry}</div>
+                  <div className="text-xs font-medium text-slate-500 group-hover:text-slate-300 transition-colors">{industry}</div>
                   <div className="text-2xl font-bold text-cyan-400 mt-2">{count}</div>
-                  <div className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">leads</div>
+                  <div className="text-[10px] text-slate-700 mt-1 uppercase tracking-wider">leads</div>
                 </button>
               ))}
             </div>
-          </div>
+          </MagicCard>
         )}
 
         {/* Lead Discovery Modal */}
         {showDiscoveryModal && (
           <div className="fixed inset-0 z-50 flex flex-col">
             {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/70" onClick={() => { setShowDiscoveryModal(false); setDiscoveryResult(null); }} />
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => { setShowDiscoveryModal(false); setDiscoveryResult(null); }} />
             {/* Scrollable container */}
             <div className="relative flex-1 overflow-y-auto overscroll-contain -webkit-overflow-scrolling-touch p-4 pt-8 md:pt-4 md:flex md:items-center md:justify-center">
-              <div className="relative bg-slate-900 border border-white/10 rounded-2xl w-full max-w-2xl mx-auto mb-8 md:mb-0">
-              <div className="border-b border-white/10 p-6">
+              <div className="relative bg-slate-950 border border-white/[0.04] rounded-2xl w-full max-w-2xl mx-auto mb-8 md:mb-0 shadow-2xl shadow-black/50">
+              <div className="border-b border-white/[0.04] p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
-                      <Target className="h-5 w-5 text-white" />
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/15 to-green-600/15 border border-emerald-500/20 flex items-center justify-center">
+                      <Target className="h-5 w-5 text-emerald-400" />
                     </div>
                     <div>
                       <h2 className="text-xl font-bold text-white">Discover New Leads</h2>
-                      <p className="text-sm text-slate-400">AI-powered lead discovery with automatic enrichment</p>
+                      <p className="text-sm text-slate-500">AI-powered lead discovery with automatic enrichment</p>
                     </div>
                   </div>
                   <button
@@ -594,9 +558,9 @@ export default function DashboardPage() {
                       setShowDiscoveryModal(false);
                       setDiscoveryResult(null);
                     }}
-                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                    className="p-2 hover:bg-white/[0.05] rounded-lg transition-colors"
                   >
-                    <X className="h-5 w-5 text-slate-400" />
+                    <X className="h-5 w-5 text-slate-500" />
                   </button>
                 </div>
               </div>
@@ -606,7 +570,7 @@ export default function DashboardPage() {
                   <>
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                        <label className="block text-sm font-medium text-slate-400 mb-2">
                           Industry
                         </label>
                         <input
@@ -614,13 +578,13 @@ export default function DashboardPage() {
                           value={discoveryIndustry}
                           onChange={(e) => setDiscoveryIndustry(e.target.value)}
                           placeholder="e.g., restaurants, fitness, retail"
-                          className="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50"
+                          className="w-full bg-slate-900/60 border border-white/[0.04] rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/20 transition-all"
                           disabled={discoveryLoading}
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                        <label className="block text-sm font-medium text-slate-400 mb-2">
                           Location
                         </label>
                         <input
@@ -628,17 +592,19 @@ export default function DashboardPage() {
                           value={discoveryLocation}
                           onChange={(e) => setDiscoveryLocation(e.target.value)}
                           placeholder="e.g., San Diego, CA"
-                          className="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50"
+                          className="w-full bg-slate-900/60 border border-white/[0.04] rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/20 transition-all"
                           disabled={discoveryLoading}
                         />
                       </div>
 
-                      <div className="bg-slate-800/30 border border-white/10 rounded-lg p-4">
+                      <div className="bg-slate-900/40 border border-white/[0.03] rounded-xl p-4">
                         <div className="flex items-start gap-3">
-                          <Sparkles className="h-5 w-5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                          <div className="text-sm text-slate-300">
-                            <p className="font-medium mb-1">AI-Powered Discovery</p>
-                            <p className="text-slate-400">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                            <Sparkles className="h-4 w-4 text-emerald-400" />
+                          </div>
+                          <div className="text-sm text-slate-400">
+                            <p className="font-medium text-slate-300 mb-1">AI-Powered Discovery</p>
+                            <p className="text-slate-500 leading-relaxed">
                               Our AI will search Google Maps, analyze businesses, and automatically enrich leads
                               with website scores, social presence, and opportunity ratings.
                             </p>
@@ -648,28 +614,29 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <Button
+                      <ButtonShiny
                         onClick={handleDiscoverLeads}
                         disabled={discoveryLoading || !discoveryIndustry.trim() || !discoveryLocation.trim()}
-                        className="flex-1 h-12 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        variant="emerald"
+                        className="flex-1 h-12"
                       >
                         {discoveryLoading ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                          <span className="flex items-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             Discovering Leads...
-                          </>
+                          </span>
                         ) : (
-                          <>
-                            <Target className="h-4 w-4 mr-2" />
+                          <span className="flex items-center gap-2">
+                            <Target className="h-4 w-4" />
                             Discover Leads
-                          </>
+                          </span>
                         )}
-                      </Button>
+                      </ButtonShiny>
                       <Button
                         onClick={() => setShowDiscoveryModal(false)}
                         variant="outline"
                         disabled={discoveryLoading}
-                        className="border-white/10 text-slate-300 hover:bg-white/5"
+                        className="border-white/[0.04] bg-slate-900/40 text-slate-400 hover:bg-slate-900/60 hover:text-white hover:border-white/[0.08]"
                       >
                         Cancel
                       </Button>
@@ -678,14 +645,14 @@ export default function DashboardPage() {
                 ) : (
                   <div className="space-y-4">
                     {discoveryResult.error ? (
-                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                      <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
                         <p className="text-red-400 text-sm">{discoveryResult.error}</p>
                       </div>
                     ) : (
                       <>
-                        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-6">
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-6">
                           <div className="flex items-center gap-3 mb-4">
-                            <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                            <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center">
                               <Sparkles className="h-6 w-6 text-emerald-400" />
                             </div>
                             <div>
@@ -695,32 +662,33 @@ export default function DashboardPage() {
                           </div>
 
                           <div className="grid grid-cols-3 gap-4">
-                            <div className="bg-slate-800/50 rounded-lg p-4">
+                            <div className="bg-slate-950/60 border border-white/[0.03] rounded-xl p-4">
                               <div className="text-2xl font-bold text-white">{discoveryResult.discovered}</div>
-                              <div className="text-xs text-slate-400">Discovered</div>
+                              <div className="text-xs text-slate-500">Discovered</div>
                             </div>
-                            <div className="bg-slate-800/50 rounded-lg p-4">
+                            <div className="bg-slate-950/60 border border-white/[0.03] rounded-xl p-4">
                               <div className="text-2xl font-bold text-emerald-400">{discoveryResult.created}</div>
-                              <div className="text-xs text-slate-400">Created</div>
+                              <div className="text-xs text-slate-500">Created</div>
                             </div>
-                            <div className="bg-slate-800/50 rounded-lg p-4">
+                            <div className="bg-slate-950/60 border border-white/[0.03] rounded-xl p-4">
                               <div className="text-2xl font-bold text-cyan-400">{discoveryResult.enriched}</div>
-                              <div className="text-xs text-slate-400">Enriched</div>
+                              <div className="text-xs text-slate-500">Enriched</div>
                             </div>
                           </div>
                         </div>
 
-                        <Button
+                        <ButtonShiny
                           onClick={() => {
                             setShowDiscoveryModal(false);
                             setDiscoveryResult(null);
                             setDiscoveryIndustry("");
                             setDiscoveryLocation("");
                           }}
-                          className="w-full h-12 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white"
+                          variant="emerald"
+                          className="w-full h-12"
                         >
                           Done
-                        </Button>
+                        </ButtonShiny>
                       </>
                     )}
                   </div>
@@ -734,40 +702,40 @@ export default function DashboardPage() {
         {/* AI Copilot Floating Widget */}
         {copilotOpen && (
           <div
-            className={`fixed z-50 bg-slate-900 border border-white/10 shadow-2xl overflow-hidden transition-all duration-300 flex flex-col ${
+            className={`fixed z-50 bg-slate-950 border border-white/[0.04] shadow-2xl shadow-black/50 overflow-hidden transition-all duration-300 flex flex-col ${
               copilotMinimized
                 ? "bottom-6 right-6 w-80 h-16 rounded-2xl"
                 : "inset-4 md:inset-auto md:bottom-6 md:right-6 md:w-96 md:h-[600px] rounded-2xl"
             }`}
           >
         {/* Copilot Header */}
-        <div className="flex-shrink-0 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border-b border-white/10 p-4 flex items-center justify-between">
+        <div className="flex-shrink-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-b border-white/[0.04] p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-              <Bot className="h-4 w-4 text-white" />
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500/15 to-blue-600/15 border border-cyan-500/20 flex items-center justify-center">
+              <Bot className="h-4 w-4 text-cyan-400" />
             </div>
             <div>
               <div className="text-sm font-semibold text-white">AI Copilot</div>
-              <div className="text-xs text-slate-400">Always here to help</div>
+              <div className="text-xs text-slate-500">Always here to help</div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCopilotMinimized(!copilotMinimized)}
-              className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+              className="p-1.5 hover:bg-white/[0.05] rounded-lg transition-colors"
             >
               {copilotMinimized ? (
-                <Maximize2 className="h-4 w-4 text-slate-400" />
+                <Maximize2 className="h-4 w-4 text-slate-500" />
               ) : (
-                <Minimize2 className="h-4 w-4 text-slate-400" />
+                <Minimize2 className="h-4 w-4 text-slate-500" />
               )}
             </button>
             <button
               onClick={() => setCopilotOpen(false)}
-              className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+              className="p-1.5 hover:bg-white/[0.05] rounded-lg transition-colors"
             >
-              <X className="h-4 w-4 text-slate-400" />
+              <X className="h-4 w-4 text-slate-500" />
             </button>
           </div>
         </div>
@@ -784,12 +752,12 @@ export default function DashboardPage() {
                   <div
                     className={`max-w-[85%] rounded-xl p-3 ${
                       msg.role === "user"
-                        ? "bg-cyan-500/20 border border-cyan-500/30 text-white"
-                        : "bg-slate-800/50 border border-white/10 text-slate-200"
+                        ? "bg-cyan-500/15 border border-cyan-500/20 text-white"
+                        : "bg-slate-900/60 border border-white/[0.04] text-slate-200"
                     }`}
                   >
                     <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</div>
-                    <div className="text-[10px] text-slate-500 mt-1">
+                    <div className="text-[10px] text-slate-600 mt-1">
                       {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </div>
                   </div>
@@ -797,7 +765,7 @@ export default function DashboardPage() {
               ))}
               {copilotLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-slate-800/50 border border-white/10 rounded-xl p-3">
+                  <div className="bg-slate-900/60 border border-white/[0.04] rounded-xl p-3">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
                       <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse delay-75" />
@@ -810,7 +778,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Copilot Input */}
-            <div className="flex-shrink-0 border-t border-white/10 p-4">
+            <div className="flex-shrink-0 border-t border-white/[0.04] p-4">
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -823,13 +791,13 @@ export default function DashboardPage() {
                     }
                   }}
                   placeholder="Ask me anything..."
-                  className="flex-1 bg-slate-800/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50"
+                  className="flex-1 bg-slate-900/60 border border-white/[0.04] rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/30 focus:ring-1 focus:ring-cyan-500/20 transition-all"
                   disabled={copilotLoading}
                 />
                 <button
                   onClick={handleCopilotMessage}
                   disabled={copilotLoading || !copilotInput.trim()}
-                  className="p-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2.5 bg-gradient-to-r from-cyan-500/20 to-blue-600/20 border border-cyan-500/20 hover:from-cyan-500/30 hover:to-blue-600/30 text-cyan-400 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="h-4 w-4" />
                 </button>

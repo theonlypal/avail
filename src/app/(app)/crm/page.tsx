@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { MagicCard, StatCard, CompactStatCard, NavCard } from "@/components/ui/magic-card";
+import { ButtonShiny } from "@/components/ui/button-shiny";
 import {
   Table,
   TableBody,
@@ -267,170 +269,160 @@ export default function CRMPage() {
   };
 
   return (
-    <div className="relative min-h-screen">
-      <div className="space-y-5 pb-6">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-slate-900/50 to-slate-800/50 border border-white/5 rounded-2xl p-6">
+    <div className="relative min-h-screen bg-slate-950">
+      {/* Subtle Background Effects */}
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-500/[0.03] via-transparent to-transparent pointer-events-none" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-indigo-500/[0.03] via-transparent to-transparent pointer-events-none" />
+
+      <div className="relative space-y-6 pb-6">
+        {/* Header - Dark premium */}
+        <MagicCard className="p-6 bg-slate-900/40" gradientFrom="rgba(99, 102, 241, 0.08)" gradientTo="transparent">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center">
-                <Users className="h-6 w-6 text-indigo-400" />
+              <div className="relative">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/15 to-purple-600/15 border border-purple-500/20 flex items-center justify-center">
+                  <Users className="h-5 w-5 text-purple-400" />
+                </div>
+                <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-br from-purple-500/10 to-indigo-500/10 blur-sm -z-10" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white">CRM</h1>
-                <p className="text-sm text-slate-400">Manage contacts, deals, and communications</p>
+                <h1 className="text-xl font-semibold text-white">CRM</h1>
+                <p className="text-sm text-slate-600">Manage contacts, deals, and communications</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={() => setShowCreateModal(true)}
-                className="h-10 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/20"
-              >
-                <Plus className="h-4 w-4 mr-2" />
+            <ButtonShiny
+              onClick={() => setShowCreateModal(true)}
+              variant="purple"
+              className="h-10 px-5"
+            >
+              <span className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
                 Add Contact
-              </Button>
-            </div>
+              </span>
+            </ButtonShiny>
           </div>
-        </div>
+        </MagicCard>
 
-        {/* Quick Navigation */}
+        {/* Quick Navigation - Premium cards with smooth hover */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-          <Link
+          <NavCard
             href="/crm"
-            className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-indigo-500/20 transition-all"
-          >
-            <Users className="h-5 w-5 text-indigo-400" />
-            <span className="text-sm font-medium text-indigo-300">Contacts</span>
-          </Link>
-          <Link
+            icon={<Users className="h-5 w-5" />}
+            label="Contacts"
+            active={true}
+            accentColor="purple"
+          />
+          <NavCard
             href="/crm/deals"
-            className="bg-slate-900/50 border border-white/10 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all group"
-          >
-            <DollarSign className="h-5 w-5 text-emerald-400" />
-            <span className="text-sm font-medium text-slate-300 group-hover:text-emerald-300">Deals</span>
-          </Link>
-          <Link
+            icon={<DollarSign className="h-5 w-5" />}
+            label="Deals"
+            accentColor="emerald"
+          />
+          <NavCard
             href="/crm/activities"
-            className="bg-slate-900/50 border border-white/10 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-amber-500/30 hover:bg-amber-500/5 transition-all group"
-          >
-            <Activity className="h-5 w-5 text-amber-400" />
-            <span className="text-sm font-medium text-slate-300 group-hover:text-amber-300">Activities</span>
-          </Link>
-          <Link
+            icon={<Activity className="h-5 w-5" />}
+            label="Activities"
+            accentColor="amber"
+          />
+          <NavCard
             href="/crm/notes"
-            className="bg-slate-900/50 border border-white/10 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all group"
-          >
-            <MessageSquare className="h-5 w-5 text-cyan-400" />
-            <span className="text-sm font-medium text-slate-300 group-hover:text-cyan-300">Notes</span>
-          </Link>
-          <Link
+            icon={<MessageSquare className="h-5 w-5" />}
+            label="Notes"
+            accentColor="cyan"
+          />
+          <NavCard
             href="/crm/communications"
-            className="bg-slate-900/50 border border-white/10 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-purple-500/30 hover:bg-purple-500/5 transition-all group"
-          >
-            <Phone className="h-5 w-5 text-purple-400" />
-            <span className="text-sm font-medium text-slate-300 group-hover:text-purple-300">Communications</span>
-          </Link>
-          <Link
+            icon={<Phone className="h-5 w-5" />}
+            label="Communications"
+            accentColor="purple"
+          />
+          <NavCard
             href="/crm/tags"
-            className="bg-slate-900/50 border border-white/10 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-pink-500/30 hover:bg-pink-500/5 transition-all group"
-          >
-            <Tag className="h-5 w-5 text-pink-400" />
-            <span className="text-sm font-medium text-slate-300 group-hover:text-pink-300">Tags</span>
-          </Link>
-          <Link
+            icon={<Tag className="h-5 w-5" />}
+            label="Tags"
+            accentColor="pink"
+          />
+          <NavCard
             href="/crm/import"
-            className="bg-slate-900/50 border border-white/10 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-teal-500/30 hover:bg-teal-500/5 transition-all group"
-          >
-            <TrendingUp className="h-5 w-5 text-teal-400" />
-            <span className="text-sm font-medium text-slate-300 group-hover:text-teal-300">Import</span>
-          </Link>
+            icon={<TrendingUp className="h-5 w-5" />}
+            label="Import"
+            accentColor="cyan"
+          />
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats Grid - Premium stat cards with hover effects */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-slate-900/50 border border-white/10 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Contacts</span>
-              <Users className="h-4 w-4 text-indigo-400" />
-            </div>
-            <div className="text-3xl font-bold text-white">{stats.totalContacts}</div>
-            <div className="text-xs text-slate-500 mt-1">
-              <span className="text-emerald-400">+{stats.newThisWeek}</span> this week
-            </div>
-          </div>
+          <StatCard
+            icon={<Users className="h-4 w-4" />}
+            title="Total Contacts"
+            value={stats.totalContacts}
+            trend={stats.newThisWeek > 0 ? { value: `+${stats.newThisWeek} this week`, positive: true } : undefined}
+            accentColor="purple"
+          />
 
-          <Link href="/crm/deals" className="bg-slate-900/50 border border-white/10 rounded-xl p-5 hover:border-cyan-500/30 transition-colors group">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Pipeline</span>
-              <DollarSign className="h-4 w-4 text-emerald-400" />
-            </div>
-            <div className="text-3xl font-bold text-emerald-400">View Deals</div>
-            <div className="flex items-center text-xs text-slate-500 mt-1 group-hover:text-cyan-400 transition-colors">
-              <span>Manage pipeline</span>
-              <ArrowUpRight className="h-3 w-3 ml-1" />
-            </div>
-          </Link>
+          <StatCard
+            icon={<DollarSign className="h-4 w-4" />}
+            title="Pipeline"
+            value="View Deals"
+            subtitle="Manage pipeline →"
+            accentColor="emerald"
+            href="/crm/deals"
+          />
 
-          <Link href="/crm/activities" className="bg-slate-900/50 border border-white/10 rounded-xl p-5 hover:border-amber-500/30 transition-colors group">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Tasks</span>
-              <Activity className="h-4 w-4 text-amber-400" />
-            </div>
-            <div className="text-3xl font-bold text-amber-400">View Tasks</div>
-            <div className="flex items-center text-xs text-slate-500 mt-1 group-hover:text-amber-400 transition-colors">
-              <span>Manage activities</span>
-              <ArrowUpRight className="h-3 w-3 ml-1" />
-            </div>
-          </Link>
+          <StatCard
+            icon={<Activity className="h-4 w-4" />}
+            title="Tasks"
+            value="View Tasks"
+            subtitle="Manage activities →"
+            accentColor="amber"
+            href="/crm/activities"
+          />
 
-          <Link href="/crm/communications" className="bg-slate-900/50 border border-white/10 rounded-xl p-5 hover:border-purple-500/30 transition-colors group">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Communications</span>
-              <MessageSquare className="h-4 w-4 text-purple-400" />
-            </div>
-            <div className="text-3xl font-bold text-purple-400">View Log</div>
-            <div className="flex items-center text-xs text-slate-500 mt-1 group-hover:text-purple-400 transition-colors">
-              <span>Calls, emails, SMS</span>
-              <ArrowUpRight className="h-3 w-3 ml-1" />
-            </div>
-          </Link>
+          <StatCard
+            icon={<MessageSquare className="h-4 w-4" />}
+            title="Communications"
+            value="View Log"
+            subtitle="Calls, emails, SMS →"
+            accentColor="purple"
+            href="/crm/communications"
+          />
         </div>
 
         {/* Search & Filters */}
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
             <Input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search contacts by name, email, or company..."
-              className="pl-11 h-11 bg-slate-900/50 border-white/10 text-white placeholder:text-slate-500 focus:border-indigo-500/50"
+              className="pl-11 h-11 bg-slate-950/60 border-white/[0.05] text-white placeholder:text-slate-600 focus:border-purple-500/30 focus:ring-purple-500/20"
             />
           </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="h-11 border-white/10 text-slate-300 hover:bg-white/5">
+              <Button variant="outline" className="h-11 border-white/[0.05] bg-slate-950/60 text-slate-400 hover:bg-slate-900/60 hover:text-white">
                 <Filter className="h-4 w-4 mr-2" />
                 {filterStage ? getStageLabel(filterStage) : "All Stages"}
                 <ChevronDown className="h-4 w-4 ml-2" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-slate-900 border-white/10">
+            <DropdownMenuContent className="bg-slate-950 border-white/[0.06]">
               <DropdownMenuItem
                 onClick={() => setFilterStage(null)}
-                className="text-slate-300 focus:bg-white/10 focus:text-white"
+                className="text-slate-300 focus:bg-white/5 focus:text-white"
               >
                 All Stages
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-white/10" />
+              <DropdownMenuSeparator className="bg-white/[0.06]" />
               {LIFECYCLE_STAGES.map(stage => (
                 <DropdownMenuItem
                   key={stage.value}
                   onClick={() => setFilterStage(stage.value)}
-                  className="text-slate-300 focus:bg-white/10 focus:text-white"
+                  className="text-slate-300 focus:bg-white/5 focus:text-white"
                 >
                   {stage.label}
                 </DropdownMenuItem>
@@ -485,50 +477,52 @@ export default function CRMPage() {
           </div>
         )}
 
-        {/* Contacts Table */}
-        <div className="rounded-2xl border border-white/10 bg-slate-900/30 overflow-hidden">
-          <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between bg-slate-900/50">
+        {/* Contacts Table - Dark premium card wrapper */}
+        <MagicCard className="overflow-hidden bg-slate-900/40" gradientSize={300}>
+          <div className="px-6 py-5 border-b border-white/[0.04] flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-white">Contacts</h2>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-slate-600 mt-1">
                 {filteredContacts.length} total contacts
               </p>
             </div>
           </div>
 
           {loading ? (
-            <div className="p-12 text-center">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-slate-700 border-t-indigo-500" />
-              <p className="text-slate-400 mt-4">Loading contacts...</p>
+            <div className="p-12 text-center bg-slate-950/40">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-slate-800 border-t-purple-500" />
+              <p className="text-slate-500 mt-4">Loading contacts...</p>
             </div>
           ) : filteredContacts.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-500/10 border border-indigo-500/30 mb-4">
-                <Users className="h-8 w-8 text-indigo-400" />
+            <div className="p-12 text-center bg-slate-950/40">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-500/10 border border-purple-500/20 mb-4">
+                <Users className="h-8 w-8 text-purple-400" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">
                 {searchQuery ? "No contacts found" : "No contacts yet"}
               </h3>
-              <p className="text-slate-400 mb-6 max-w-md mx-auto">
+              <p className="text-slate-500 mb-6 max-w-md mx-auto">
                 {searchQuery
                   ? "Try a different search query"
                   : "Add your first contact to get started with your CRM"
                 }
               </p>
               {!searchQuery && (
-                <Button
+                <ButtonShiny
                   onClick={() => setShowCreateModal(true)}
-                  className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+                  variant="purple"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Your First Contact
-                </Button>
+                  <span className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Your First Contact
+                  </span>
+                </ButtonShiny>
               )}
             </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-white/10 hover:bg-transparent">
+                <TableRow className="border-b border-white/[0.04] bg-slate-950/40 hover:bg-transparent">
                   <TableHead className="w-12">
                     <button
                       onClick={selectAllContacts}
@@ -543,12 +537,12 @@ export default function CRMPage() {
                       )}
                     </button>
                   </TableHead>
-                  <TableHead className="text-slate-400 font-semibold">Contact</TableHead>
-                  <TableHead className="text-slate-400 font-semibold hidden md:table-cell">Company</TableHead>
-                  <TableHead className="text-slate-400 font-semibold hidden lg:table-cell">Stage</TableHead>
-                  <TableHead className="text-slate-400 font-semibold hidden lg:table-cell">Tags</TableHead>
-                  <TableHead className="text-slate-400 font-semibold hidden xl:table-cell">Created</TableHead>
-                  <TableHead className="text-slate-400 font-semibold w-12"></TableHead>
+                  <TableHead className="text-slate-500 font-semibold">Contact</TableHead>
+                  <TableHead className="text-slate-500 font-semibold hidden md:table-cell">Company</TableHead>
+                  <TableHead className="text-slate-500 font-semibold hidden lg:table-cell">Stage</TableHead>
+                  <TableHead className="text-slate-500 font-semibold hidden lg:table-cell">Tags</TableHead>
+                  <TableHead className="text-slate-500 font-semibold hidden xl:table-cell">Created</TableHead>
+                  <TableHead className="text-slate-500 font-semibold w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -559,8 +553,8 @@ export default function CRMPage() {
                   return (
                     <TableRow
                       key={contact.id}
-                      className={`border-b border-white/5 hover:bg-white/[0.02] transition-colors ${
-                        isSelected ? 'bg-indigo-500/5' : ''
+                      className={`border-b border-white/[0.03] hover:bg-slate-900/40 transition-colors ${
+                        isSelected ? 'bg-purple-500/5' : ''
                       }`}
                     >
                       <TableCell>
@@ -577,8 +571,8 @@ export default function CRMPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center flex-shrink-0">
-                            <span className="text-sm font-semibold text-indigo-300">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/15 to-indigo-500/15 border border-purple-500/20 flex items-center justify-center flex-shrink-0">
+                            <span className="text-sm font-semibold text-purple-300">
                               {contact.first_name[0]}{contact.last_name[0]}
                             </span>
                           </div>
@@ -687,12 +681,12 @@ export default function CRMPage() {
               </TableBody>
             </Table>
           )}
-        </div>
+        </MagicCard>
       </div>
 
       {/* Create Contact Modal */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="sm:max-w-[500px] bg-slate-900 border-white/10">
+        <DialogContent className="sm:max-w-[500px] bg-slate-950 border-white/[0.06]">
           <DialogHeader>
             <DialogTitle className="text-xl text-white">Add New Contact</DialogTitle>
             <DialogDescription className="text-slate-400">
@@ -703,64 +697,64 @@ export default function CRMPage() {
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">First Name *</Label>
+                <Label className="text-slate-400">First Name *</Label>
                 <Input
                   value={newContact.first_name}
                   onChange={(e) => setNewContact({ ...newContact, first_name: e.target.value })}
                   placeholder="John"
-                  className="bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500"
+                  className="bg-slate-900/60 border-white/[0.05] text-white placeholder:text-slate-600"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300">Last Name *</Label>
+                <Label className="text-slate-400">Last Name *</Label>
                 <Input
                   value={newContact.last_name}
                   onChange={(e) => setNewContact({ ...newContact, last_name: e.target.value })}
                   placeholder="Doe"
-                  className="bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500"
+                  className="bg-slate-900/60 border-white/[0.05] text-white placeholder:text-slate-600"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-300">Email *</Label>
+              <Label className="text-slate-400">Email *</Label>
               <Input
                 type="email"
                 value={newContact.email}
                 onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
                 placeholder="john@example.com"
-                className="bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500"
+                className="bg-slate-900/60 border-white/[0.05] text-white placeholder:text-slate-600"
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-300">Phone</Label>
+              <Label className="text-slate-400">Phone</Label>
               <Input
                 type="tel"
                 value={newContact.phone}
                 onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
                 placeholder="+1 (555) 000-0000"
-                className="bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500"
+                className="bg-slate-900/60 border-white/[0.05] text-white placeholder:text-slate-600"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">Company</Label>
+                <Label className="text-slate-400">Company</Label>
                 <Input
                   value={newContact.company}
                   onChange={(e) => setNewContact({ ...newContact, company: e.target.value })}
                   placeholder="Acme Inc."
-                  className="bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500"
+                  className="bg-slate-900/60 border-white/[0.05] text-white placeholder:text-slate-600"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300">Job Title</Label>
+                <Label className="text-slate-400">Job Title</Label>
                 <Input
                   value={newContact.title}
                   onChange={(e) => setNewContact({ ...newContact, title: e.target.value })}
                   placeholder="CEO"
-                  className="bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500"
+                  className="bg-slate-900/60 border-white/[0.05] text-white placeholder:text-slate-600"
                 />
               </div>
             </div>
@@ -770,37 +764,37 @@ export default function CRMPage() {
             <Button
               variant="outline"
               onClick={() => setShowCreateModal(false)}
-              className="border-white/10 text-slate-300 hover:bg-white/5"
+              className="border-white/[0.05] text-slate-400 hover:bg-slate-900/60"
             >
               Cancel
             </Button>
-            <Button
+            <ButtonShiny
               onClick={handleCreateContact}
               disabled={createLoading}
-              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+              variant="purple"
             >
               {createLoading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Creating...
-                </>
+                </span>
               ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-2" />
+                <span className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
                   Create Contact
-                </>
+                </span>
               )}
-            </Button>
+            </ButtonShiny>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-[400px] bg-slate-900 border-white/10">
+        <DialogContent className="sm:max-w-[400px] bg-slate-950 border-white/[0.06]">
           <DialogHeader>
             <DialogTitle className="text-xl text-white">Delete Contact</DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className="text-slate-500">
               Are you sure you want to delete {contactToDelete?.first_name} {contactToDelete?.last_name}?
               This action cannot be undone.
             </DialogDescription>
@@ -810,13 +804,13 @@ export default function CRMPage() {
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
-              className="border-white/10 text-slate-300 hover:bg-white/5"
+              className="border-white/[0.05] text-slate-400 hover:bg-slate-900/60"
             >
               Cancel
             </Button>
             <Button
               onClick={handleDeleteContact}
-              className="bg-red-500 hover:bg-red-600 text-white"
+              className="bg-red-500/80 hover:bg-red-500 text-white"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
