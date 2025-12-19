@@ -4,9 +4,9 @@
  */
 
 import { NextResponse } from 'next/server';
+import { Pool } from 'pg';
 import { initializePostgresSchema } from '@/lib/db';
 import { initializePostgresCRMSchema } from '@/lib/db-crm';
-import { neon } from '@neondatabase/serverless';
 
 export async function GET() {
   try {
@@ -27,7 +27,13 @@ export async function GET() {
       }, { status: 500 });
     }
 
-    const sql = neon(postgresUrl);
+    // Create pg Pool for Railway Postgres
+    const pool = new Pool({
+      connectionString: postgresUrl,
+      ssl: false, // Railway internal connections don't need SSL
+      max: 5,
+      idleTimeoutMillis: 30000,
+    });
 
     // Initialize core schema
     await initializePostgresSchema();
@@ -36,7 +42,7 @@ export async function GET() {
     await initializePostgresCRMSchema();
 
     // Initialize live transcripts table (for WebSocket server)
-    await sql`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS live_transcripts (
         id SERIAL PRIMARY KEY,
         call_sid TEXT NOT NULL,
@@ -46,12 +52,12 @@ export async function GET() {
         confidence REAL DEFAULT 0.99,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `;
-    await sql`CREATE INDEX IF NOT EXISTS idx_live_transcripts_call_sid ON live_transcripts(call_sid)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_live_transcripts_timestamp ON live_transcripts(timestamp DESC)`;
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_live_transcripts_call_sid ON live_transcripts(call_sid)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_live_transcripts_timestamp ON live_transcripts(timestamp DESC)`);
 
     // Initialize activities table
-    await sql`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS activities (
         id TEXT PRIMARY KEY,
         team_id TEXT NOT NULL,
@@ -73,21 +79,25 @@ export async function GET() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `;
+    `);
 
     // Seed default team if not exists
-    const teams = await sql`SELECT COUNT(*) as count FROM teams`;
-    if (Number(teams[0].count) === 0) {
+    const teamsResult = await pool.query('SELECT COUNT(*) as count FROM teams');
+    if (Number(teamsResult.rows[0].count) === 0) {
       const teamId = 'avail-team-' + Date.now();
-      await sql`INSERT INTO teams (id, team_name, subscription_tier) VALUES (${teamId}, ${'AVAIL'}, ${'pro'})`;
+      await pool.query('INSERT INTO teams (id, team_name, subscription_tier) VALUES ($1, $2, $3)', [teamId, 'AVAIL', 'pro']);
 
       // Add team members
-      await sql`INSERT INTO team_members (id, team_id, name, email, role) VALUES
-        (${teamId + '-zach'}, ${teamId}, ${'Zach'}, ${'zach@avail.ai'}, ${'owner'}),
-        (${teamId + '-ryan'}, ${teamId}, ${'Ryan'}, ${'ryan@avail.ai'}, ${'manager'}),
-        (${teamId + '-dc'}, ${teamId}, ${'DC'}, ${'dc@avail.ai'}, ${'rep'})
-      `;
+      await pool.query(`
+        INSERT INTO team_members (id, team_id, name, email, role) VALUES
+        ($1, $4, 'Zach', 'zach@avail.ai', 'owner'),
+        ($2, $4, 'Ryan', 'ryan@avail.ai', 'manager'),
+        ($3, $4, 'DC', 'dc@avail.ai', 'rep')
+      `, [teamId + '-zach', teamId + '-ryan', teamId + '-dc', teamId]);
     }
+
+    // Close the pool
+    await pool.end();
 
     return NextResponse.json({
       success: true,
