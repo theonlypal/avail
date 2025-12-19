@@ -6,12 +6,21 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -74,28 +83,27 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const teamId = searchParams.get('team_id') || 'default-team';
 
-    if (IS_PRODUCTION && sql) {
+    if (IS_PRODUCTION && pgPool) {
       // Check if settings exist
-      let result = await sql`
-        SELECT * FROM availability_settings WHERE team_id = ${teamId}
-      `;
+      let result = await pgPool.query(
+        'SELECT * FROM availability_settings WHERE team_id = $1',
+        [teamId]
+      );
 
-      if (result.length === 0) {
+      if (result.rows.length === 0) {
         // Create default settings
         const id = uuidv4();
-        await sql`
-          INSERT INTO availability_settings (
+        await pgPool.query(
+          `INSERT INTO availability_settings (
             id, team_id, timezone, booking_duration, buffer_time,
             advance_notice, max_advance_days, available_hours, meeting_types
-          ) VALUES (
-            ${id}, ${teamId}, 'America/Los_Angeles', 30, 15,
-            60, 60, ${JSON.stringify(DEFAULT_HOURS)}, '[]'
-          )
-        `;
-        result = await sql`SELECT * FROM availability_settings WHERE team_id = ${teamId}`;
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [id, teamId, 'America/Los_Angeles', 30, 15, 60, 60, JSON.stringify(DEFAULT_HOURS), '[]']
+        );
+        result = await pgPool.query('SELECT * FROM availability_settings WHERE team_id = $1', [teamId]);
       }
 
-      const settings = result[0];
+      const settings = result.rows[0];
       return NextResponse.json({
         ...settings,
         available_hours: typeof settings.available_hours === 'string'
@@ -159,30 +167,27 @@ export async function POST(request: NextRequest) {
       meeting_types = [],
     } = body;
 
-    if (IS_PRODUCTION && sql) {
+    if (IS_PRODUCTION && pgPool) {
       // Upsert availability settings
-      await sql`
-        INSERT INTO availability_settings (
+      await pgPool.query(
+        `INSERT INTO availability_settings (
           id, team_id, timezone, booking_duration, buffer_time,
           advance_notice, max_advance_days, available_hours, meeting_types, updated_at
-        ) VALUES (
-          ${uuidv4()}, ${teamId}, ${timezone}, ${booking_duration}, ${buffer_time},
-          ${advance_notice}, ${max_advance_days}, ${JSON.stringify(available_hours)},
-          ${JSON.stringify(meeting_types)}, NOW()
-        )
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
         ON CONFLICT (team_id) DO UPDATE SET
-          timezone = ${timezone},
-          booking_duration = ${booking_duration},
-          buffer_time = ${buffer_time},
-          advance_notice = ${advance_notice},
-          max_advance_days = ${max_advance_days},
-          available_hours = ${JSON.stringify(available_hours)},
-          meeting_types = ${JSON.stringify(meeting_types)},
-          updated_at = NOW()
-      `;
+          timezone = $3,
+          booking_duration = $4,
+          buffer_time = $5,
+          advance_notice = $6,
+          max_advance_days = $7,
+          available_hours = $8,
+          meeting_types = $9,
+          updated_at = NOW()`,
+        [uuidv4(), teamId, timezone, booking_duration, buffer_time, advance_notice, max_advance_days, JSON.stringify(available_hours), JSON.stringify(meeting_types)]
+      );
 
-      const result = await sql`SELECT * FROM availability_settings WHERE team_id = ${teamId}`;
-      const settings = result[0];
+      const result = await pgPool.query('SELECT * FROM availability_settings WHERE team_id = $1', [teamId]);
+      const settings = result.rows[0];
 
       return NextResponse.json({
         success: true,

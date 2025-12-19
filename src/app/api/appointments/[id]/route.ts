@@ -8,11 +8,21 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAppointmentById } from '@/lib/db-crm';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -129,23 +139,23 @@ export async function PUT(
 
     updates.updated_at = now;
 
-    if (IS_PRODUCTION && sql) {
-      // Postgres update - Build SET clause
-      const setClause = Object.keys(updates)
-        .map(key => {
-          const value = updates[key];
-          if (value === null) return `${key} = NULL`;
-          if (value instanceof Date) return `${key} = '${value.toISOString()}'`;
-          if (typeof value === 'string') return `${key} = '${value.replace(/'/g, "''")}'`;
-          return `${key} = '${value}'`;
-        })
-        .join(', ');
+    if (IS_PRODUCTION && pgPool) {
+      // Postgres update - Build SET clause with parameterized query
+      const keys = Object.keys(updates);
+      const values = keys.map(key => {
+        const val = updates[key];
+        if (val instanceof Date) return val.toISOString();
+        return val;
+      });
+      values.push(id);
 
-      const result = await sql.unsafe(
-        `UPDATE appointments SET ${setClause} WHERE id = '${id}' RETURNING *`
-      ) as unknown as any[];
+      const setClause = keys.map((key, idx) => `${key} = $${idx + 1}`).join(', ');
+      const result = await pgPool.query(
+        `UPDATE appointments SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`,
+        values
+      );
 
-      if (!result || result.length === 0) {
+      if (!result.rows || result.rows.length === 0) {
         return NextResponse.json(
           { error: 'Appointment not found' },
           { status: 404 }
@@ -153,7 +163,7 @@ export async function PUT(
       }
 
       console.log('✅ Appointment updated via API:', id, updates.status ? `→ ${updates.status}` : '');
-      return NextResponse.json({ success: true, appointment: result[0] });
+      return NextResponse.json({ success: true, appointment: result.rows[0] });
 
     } else {
       // SQLite
@@ -212,8 +222,8 @@ export async function DELETE(
 
     // TODO: If google_calendar_event_id exists, delete from Google Calendar
 
-    if (IS_PRODUCTION && sql) {
-      await sql`DELETE FROM appointments WHERE id = ${id}`;
+    if (IS_PRODUCTION && pgPool) {
+      await pgPool.query('DELETE FROM appointments WHERE id = $1', [id]);
       console.log('✅ Appointment deleted via API:', id);
       return NextResponse.json({ success: true, deletedId: id });
 

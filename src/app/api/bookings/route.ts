@@ -6,12 +6,22 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -62,20 +72,29 @@ export async function GET(request: NextRequest) {
     const upcoming = searchParams.get('upcoming') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    if (IS_PRODUCTION && sql) {
-      let query = `
+    if (IS_PRODUCTION && pgPool) {
+      const conditions: string[] = ['team_id = $1'];
+      const params: any[] = [teamId];
+      let paramIndex = 2;
+
+      if (status) {
+        conditions.push(`status = $${paramIndex}`);
+        params.push(status);
+        paramIndex++;
+      }
+      if (upcoming) {
+        conditions.push(`start_time > NOW()`);
+      }
+
+      params.push(limit);
+      const query = `
         SELECT * FROM bookings
-        WHERE team_id = '${teamId}'
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY start_time ASC LIMIT $${paramIndex}
       `;
 
-      if (status) query += ` AND status = '${status}'`;
-      if (upcoming) query += ` AND start_time > NOW()`;
-
-      query += ` ORDER BY start_time ASC LIMIT ${limit}`;
-
-      const result = await sql.unsafe(query);
-      const bookings = Array.isArray(result) ? result : [];
-      return NextResponse.json({ bookings });
+      const result = await pgPool.query(query, params);
+      return NextResponse.json({ bookings: result.rows });
     } else {
       const db = getSqliteDb();
 
@@ -139,26 +158,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (IS_PRODUCTION && sql) {
-      const result = await sql`
+    if (IS_PRODUCTION && pgPool) {
+      const result = await pgPool.query(`
         INSERT INTO bookings (
           id, team_id, contact_id, lead_id, external_id, title,
           start_time, end_time, attendee_email, attendee_name,
           status, notes, metadata, created_at
         )
-        VALUES (
-          ${id}, ${body.team_id}, ${body.contact_id || null}, ${body.lead_id || null},
-          ${body.external_id || null}, ${body.title},
-          ${body.start_time}, ${body.end_time || null},
-          ${body.attendee_email || null}, ${body.attendee_name || null},
-          ${body.status || 'scheduled'}, ${body.notes || null},
-          ${JSON.stringify(body.metadata || {})}, ${now}
-        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING *
-      `;
+      `, [
+        id, body.team_id, body.contact_id || null, body.lead_id || null,
+        body.external_id || null, body.title,
+        body.start_time, body.end_time || null,
+        body.attendee_email || null, body.attendee_name || null,
+        body.status || 'scheduled', body.notes || null,
+        JSON.stringify(body.metadata || {}), now
+      ]);
 
       console.log('✅ Booking created via API:', id);
-      return NextResponse.json({ success: true, booking: result[0] });
+      return NextResponse.json({ success: true, booking: result.rows[0] });
 
     } else {
       const db = getSqliteDb();

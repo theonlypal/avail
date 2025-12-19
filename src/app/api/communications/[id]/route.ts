@@ -7,11 +7,21 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -25,9 +35,9 @@ function getSqliteDb(): any {
 }
 
 async function getCommunicationById(id: string) {
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`SELECT * FROM communications WHERE id = ${id}`;
-    return result[0] || null;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query('SELECT * FROM communications WHERE id = $1', [id]);
+    return result.rows[0] || null;
   } else {
     const db = getSqliteDb();
     return db.prepare('SELECT * FROM communications WHERE id = ?').get(id) || null;
@@ -92,16 +102,17 @@ export async function PUT(
       );
     }
 
-    if (IS_PRODUCTION && sql) {
-      const setClause = Object.keys(updates).map(key => {
-        const val = updates[key];
-        if (val === null) return `${key} = NULL`;
-        return `${key} = '${val}'`;
-      }).join(', ');
+    if (IS_PRODUCTION && pgPool) {
+      const keys = Object.keys(updates);
+      const values = [...Object.values(updates), id];
+      const setClause = keys.map((key, idx) => `${key} = $${idx + 1}`).join(', ');
 
-      const result = await sql`UPDATE communications SET ${sql.unsafe(setClause)} WHERE id = ${id} RETURNING *`;
+      const result = await pgPool.query(
+        `UPDATE communications SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`,
+        values
+      );
 
-      if (result.length === 0) {
+      if (result.rows.length === 0) {
         return NextResponse.json(
           { error: 'Communication not found' },
           { status: 404 }
@@ -109,7 +120,7 @@ export async function PUT(
       }
 
       console.log('✅ Communication updated via API:', id);
-      return NextResponse.json({ success: true, communication: result[0] });
+      return NextResponse.json({ success: true, communication: result.rows[0] });
 
     } else {
       const db = getSqliteDb();
@@ -151,10 +162,10 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    if (IS_PRODUCTION && sql) {
-      const result = await sql`DELETE FROM communications WHERE id = ${id} RETURNING id`;
+    if (IS_PRODUCTION && pgPool) {
+      const result = await pgPool.query('DELETE FROM communications WHERE id = $1 RETURNING id', [id]);
 
-      if (result.length === 0) {
+      if (result.rows.length === 0) {
         return NextResponse.json(
           { error: 'Communication not found' },
           { status: 404 }

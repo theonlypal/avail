@@ -6,12 +6,22 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -69,9 +79,35 @@ export async function GET(request: NextRequest) {
     const direction = searchParams.get('direction');
     const limit = parseInt(searchParams.get('limit') || '100');
 
-    if (IS_PRODUCTION && sql) {
-      // Build dynamic query for Postgres
-      let query = `
+    if (IS_PRODUCTION && pgPool) {
+      // Build parameterized query for Postgres
+      const conditions: string[] = ['com.team_id = $1'];
+      const params: any[] = [teamId];
+      let paramIndex = 2;
+
+      if (contactId) {
+        conditions.push(`com.contact_id = $${paramIndex}`);
+        params.push(contactId);
+        paramIndex++;
+      }
+      if (dealId) {
+        conditions.push(`com.deal_id = $${paramIndex}`);
+        params.push(dealId);
+        paramIndex++;
+      }
+      if (type) {
+        conditions.push(`com.type = $${paramIndex}`);
+        params.push(type);
+        paramIndex++;
+      }
+      if (direction) {
+        conditions.push(`com.direction = $${paramIndex}`);
+        params.push(direction);
+        paramIndex++;
+      }
+
+      params.push(limit);
+      const query = `
         SELECT com.*,
           c.first_name as contact_first_name,
           c.last_name as contact_last_name,
@@ -79,18 +115,12 @@ export async function GET(request: NextRequest) {
           c.phone as contact_phone
         FROM communications com
         LEFT JOIN contacts c ON com.contact_id = c.id
-        WHERE com.team_id = '${teamId}'
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY com.created_at DESC LIMIT $${paramIndex}
       `;
 
-      if (contactId) query += ` AND com.contact_id = '${contactId}'`;
-      if (dealId) query += ` AND com.deal_id = '${dealId}'`;
-      if (type) query += ` AND com.type = '${type}'`;
-      if (direction) query += ` AND com.direction = '${direction}'`;
-
-      query += ` ORDER BY com.created_at DESC LIMIT ${limit}`;
-
-      const communications = await sql.unsafe(query);
-      return NextResponse.json({ communications });
+      const result = await pgPool.query(query, params);
+      return NextResponse.json({ communications: result.rows });
     } else {
       const db = getSqliteDb();
 
@@ -177,26 +207,26 @@ export async function POST(request: NextRequest) {
     const id = uuidv4();
     const now = new Date();
 
-    if (IS_PRODUCTION && sql) {
-      const result = await sql`
+    if (IS_PRODUCTION && pgPool) {
+      const result = await pgPool.query(`
         INSERT INTO communications (
           id, team_id, type, direction, contact_id, deal_id, lead_id,
           from_address, to_address, subject, body, status, external_id,
           duration_seconds, outcome, metadata, created_at
         )
-        VALUES (
-          ${id}, ${body.team_id}, ${body.type}, ${body.direction},
-          ${body.contact_id || null}, ${body.deal_id || null}, ${body.lead_id || null},
-          ${body.from_address || null}, ${body.to_address || null}, ${body.subject || null},
-          ${body.body || null}, ${body.status || 'sent'}, ${body.external_id || null},
-          ${body.duration_seconds || null}, ${body.outcome || null},
-          ${JSON.stringify(body.metadata || {})}, ${now}
-        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         RETURNING *
-      `;
+      `, [
+        id, body.team_id, body.type, body.direction,
+        body.contact_id || null, body.deal_id || null, body.lead_id || null,
+        body.from_address || null, body.to_address || null, body.subject || null,
+        body.body || null, body.status || 'sent', body.external_id || null,
+        body.duration_seconds || null, body.outcome || null,
+        JSON.stringify(body.metadata || {}), now
+      ]);
 
       console.log('✅ Communication logged via API:', id);
-      return NextResponse.json({ success: true, communication: result[0] });
+      return NextResponse.json({ success: true, communication: result.rows[0] });
 
     } else {
       const db = getSqliteDb();

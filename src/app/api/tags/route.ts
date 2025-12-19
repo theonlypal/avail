@@ -6,12 +6,22 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -57,16 +67,16 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const teamId = searchParams.get('team_id') || 'default-team';
 
-    if (IS_PRODUCTION && sql) {
-      const tags = await sql`
+    if (IS_PRODUCTION && pgPool) {
+      const result = await pgPool.query(`
         SELECT t.*, COUNT(ct.contact_id) as contact_count
         FROM tags t
         LEFT JOIN contact_tags ct ON t.id = ct.tag_id
-        WHERE t.team_id = ${teamId}
+        WHERE t.team_id = $1
         GROUP BY t.id
         ORDER BY t.name ASC
-      `;
-      return NextResponse.json({ tags });
+      `, [teamId]);
+      return NextResponse.json({ tags: result.rows });
     } else {
       const db = getSqliteDb();
       const tags = db.prepare(`
@@ -109,24 +119,24 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const color = body.color || '#6366f1';
 
-    if (IS_PRODUCTION && sql) {
+    if (IS_PRODUCTION && pgPool) {
       // Check for duplicate
-      const existing = await sql`SELECT id FROM tags WHERE team_id = ${body.team_id} AND name = ${body.name}`;
-      if (existing.length > 0) {
+      const existing = await pgPool.query('SELECT id FROM tags WHERE team_id = $1 AND name = $2', [body.team_id, body.name]);
+      if (existing.rows.length > 0) {
         return NextResponse.json(
           { error: 'A tag with this name already exists' },
           { status: 409 }
         );
       }
 
-      const result = await sql`
+      const result = await pgPool.query(`
         INSERT INTO tags (id, team_id, name, color, created_at)
-        VALUES (${id}, ${body.team_id}, ${body.name}, ${color}, ${now})
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
-      `;
+      `, [id, body.team_id, body.name, color, now]);
 
       console.log('✅ Tag created via API:', id);
-      return NextResponse.json({ success: true, tag: result[0] });
+      return NextResponse.json({ success: true, tag: result.rows[0] });
 
     } else {
       const db = getSqliteDb();

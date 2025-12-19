@@ -26,11 +26,22 @@ import {
 } from './db-automation';
 import { sendSMS } from '@/lib/integrations/twilio';
 import { sendEmail } from '@/lib/integrations/postmark';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+// PostgreSQL Pool for production (Railway)
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 10,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // ============================================
 // TYPES
@@ -195,14 +206,12 @@ async function getActiveRulesForTrigger(
   triggerType: TriggerType,
   teamId: string
 ): Promise<AutomationRule[]> {
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`
-      SELECT * FROM automation_rules
-      WHERE team_id = ${teamId}
-        AND trigger_type = ${triggerType}
-        AND is_active = true
-    `;
-    return (result as AutomationRule[]) || [];
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query(
+      'SELECT * FROM automation_rules WHERE team_id = $1 AND trigger_type = $2 AND is_active = true',
+      [teamId, triggerType]
+    );
+    return (result.rows as AutomationRule[]) || [];
   } else {
     const db = getAutomationDb();
     return db.prepare(`
@@ -217,12 +226,11 @@ async function getActiveRulesForTrigger(
  */
 async function updateRuleRunCount(ruleId: string): Promise<void> {
   const now = new Date().toISOString();
-  if (IS_PRODUCTION && sql) {
-    await sql`
-      UPDATE automation_rules
-      SET run_count = run_count + 1, last_run_at = ${now}, updated_at = ${now}
-      WHERE id = ${ruleId}
-    `;
+  if (IS_PRODUCTION && pgPool) {
+    await pgPool.query(
+      'UPDATE automation_rules SET run_count = run_count + 1, last_run_at = $1, updated_at = $2 WHERE id = $3',
+      [now, now, ruleId]
+    );
   } else {
     const db = getAutomationDb();
     db.prepare(`
@@ -394,19 +402,20 @@ async function executeAction(
 async function logActionExecution(log: Partial<AutomationLog>): Promise<void> {
   try {
     const now = new Date().toISOString();
-    if (IS_PRODUCTION && sql) {
-      await sql`
-        INSERT INTO automation_logs (
+    if (IS_PRODUCTION && pgPool) {
+      await pgPool.query(
+        `INSERT INTO automation_logs (
           id, rule_id, trigger_type, entity_type, entity_id,
           action_type, status, result, error_message, executed_at
-        ) VALUES (
-          ${log.id}, ${log.rule_id}, ${log.trigger_type},
-          ${log.entity_type || null}, ${log.entity_id || null},
-          ${log.action_type}, ${log.status},
-          ${log.result ? JSON.stringify(log.result) : null},
-          ${log.error_message || null}, ${now}
-        )
-      `;
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [
+          log.id, log.rule_id, log.trigger_type,
+          log.entity_type || null, log.entity_id || null,
+          log.action_type, log.status,
+          log.result ? JSON.stringify(log.result) : null,
+          log.error_message || null, now
+        ]
+      );
     } else {
       const db = getAutomationDb();
       db.prepare(`
@@ -593,18 +602,19 @@ async function executeCreateTask(
     const dueDate = new Date(Date.now() + dueDays * 24 * 60 * 60 * 1000);
     const now = new Date().toISOString();
 
-    if (IS_PRODUCTION && sql) {
-      await sql`
-        INSERT INTO activities (
+    if (IS_PRODUCTION && pgPool) {
+      await pgPool.query(
+        `INSERT INTO activities (
           id, team_id, type, title, contact_id, deal_id,
           assigned_to, due_date, priority, status, created_at, updated_at
-        ) VALUES (
-          ${taskId}, ${event.teamId}, 'task', ${taskTitle},
-          ${event.data.contactId || null}, ${event.data.dealId || null},
-          ${config.task_assignee || null}, ${dueDate.toISOString()},
-          ${config.priority || 'medium'}, 'pending', ${now}, ${now}
-        )
-      `;
+        ) VALUES ($1, $2, 'task', $3, $4, $5, $6, $7, $8, 'pending', $9, $10)`,
+        [
+          taskId, event.teamId, taskTitle,
+          event.data.contactId || null, event.data.dealId || null,
+          config.task_assignee || null, dueDate.toISOString(),
+          config.priority || 'medium', now, now
+        ]
+      );
     } else {
       const Database = require('better-sqlite3');
       const path = require('path');
@@ -666,11 +676,11 @@ async function executeUpdateStage(
   try {
     const now = new Date().toISOString();
 
-    if (IS_PRODUCTION && sql) {
-      await sql`
-        UPDATE deals SET stage = ${newStage}, updated_at = ${now}
-        WHERE id = ${event.data.dealId}
-      `;
+    if (IS_PRODUCTION && pgPool) {
+      await pgPool.query(
+        'UPDATE deals SET stage = $1, updated_at = $2 WHERE id = $3',
+        [newStage, now, event.data.dealId]
+      );
     } else {
       const Database = require('better-sqlite3');
       const path = require('path');
@@ -721,12 +731,11 @@ async function executeAddTag(
   }
 
   try {
-    if (IS_PRODUCTION && sql) {
-      await sql`
-        INSERT INTO contact_tags (contact_id, tag_id)
-        VALUES (${event.data.contactId}, ${tagId})
-        ON CONFLICT DO NOTHING
-      `;
+    if (IS_PRODUCTION && pgPool) {
+      await pgPool.query(
+        'INSERT INTO contact_tags (contact_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        [event.data.contactId, tagId]
+      );
     } else {
       const Database = require('better-sqlite3');
       const path = require('path');
@@ -777,11 +786,11 @@ async function executeRemoveTag(
   }
 
   try {
-    if (IS_PRODUCTION && sql) {
-      await sql`
-        DELETE FROM contact_tags
-        WHERE contact_id = ${event.data.contactId} AND tag_id = ${tagId}
-      `;
+    if (IS_PRODUCTION && pgPool) {
+      await pgPool.query(
+        'DELETE FROM contact_tags WHERE contact_id = $1 AND tag_id = $2',
+        [event.data.contactId, tagId]
+      );
     } else {
       const Database = require('better-sqlite3');
       const path = require('path');
@@ -924,18 +933,19 @@ async function scheduleAction(
     action: action,
   };
 
-  if (IS_PRODUCTION && sql) {
-    await sql`
-      INSERT INTO automation_queue (
+  if (IS_PRODUCTION && pgPool) {
+    await pgPool.query(
+      `INSERT INTO automation_queue (
         id, rule_id, action_index, entity_type, entity_id,
         context, scheduled_for, status, created_at
-      ) VALUES (
-        ${queueId}, ${ruleId}, ${actionIndex},
-        ${event.data.contactId ? 'contact' : event.data.leadId ? 'lead' : event.data.dealId ? 'deal' : null},
-        ${event.data.contactId || event.data.leadId || event.data.dealId || null},
-        ${JSON.stringify(context)}, ${scheduledFor.toISOString()}, 'pending', ${now}
-      )
-    `;
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8)`,
+      [
+        queueId, ruleId, actionIndex,
+        event.data.contactId ? 'contact' : event.data.leadId ? 'lead' : event.data.dealId ? 'deal' : null,
+        event.data.contactId || event.data.leadId || event.data.dealId || null,
+        JSON.stringify(context), scheduledFor.toISOString(), now
+      ]
+    );
   } else {
     const db = getAutomationDb();
     db.prepare(`
@@ -964,15 +974,17 @@ export async function processScheduledActions(): Promise<{ processed: number; fa
   try {
     let pendingItems: any[] = [];
 
-    if (IS_PRODUCTION && sql) {
-      pendingItems = await sql`
-        SELECT q.*, r.name as rule_name, r.trigger_type
+    if (IS_PRODUCTION && pgPool) {
+      const result = await pgPool.query(
+        `SELECT q.*, r.name as rule_name, r.trigger_type
         FROM automation_queue q
         JOIN automation_rules r ON q.rule_id = r.id
-        WHERE q.status = 'pending' AND q.scheduled_for <= ${now}
+        WHERE q.status = 'pending' AND q.scheduled_for <= $1
         ORDER BY q.scheduled_for ASC
-        LIMIT 100
-      ` as any[];
+        LIMIT 100`,
+        [now]
+      );
+      pendingItems = result.rows;
     } else {
       const db = getAutomationDb();
       pendingItems = db.prepare(`
@@ -1054,17 +1066,17 @@ async function updateQueueStatus(
   status: string,
   processedAt?: string
 ): Promise<void> {
-  if (IS_PRODUCTION && sql) {
+  if (IS_PRODUCTION && pgPool) {
     if (processedAt) {
-      await sql`
-        UPDATE automation_queue
-        SET status = ${status}, last_attempt_at = ${processedAt}, attempts = attempts + 1
-        WHERE id = ${queueId}
-      `;
+      await pgPool.query(
+        'UPDATE automation_queue SET status = $1, last_attempt_at = $2, attempts = attempts + 1 WHERE id = $3',
+        [status, processedAt, queueId]
+      );
     } else {
-      await sql`
-        UPDATE automation_queue SET status = ${status} WHERE id = ${queueId}
-      `;
+      await pgPool.query(
+        'UPDATE automation_queue SET status = $1 WHERE id = $2',
+        [status, queueId]
+      );
     }
   } else {
     const db = getAutomationDb();
@@ -1088,11 +1100,12 @@ async function updateQueueStatus(
  * Get a message template by ID
  */
 async function getTemplate(templateId: string): Promise<any | null> {
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`
-      SELECT * FROM automation_templates WHERE id = ${templateId}
-    `;
-    return result?.[0] || null;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query(
+      'SELECT * FROM automation_templates WHERE id = $1',
+      [templateId]
+    );
+    return result.rows?.[0] || null;
   } else {
     const db = getAutomationDb();
     return db.prepare('SELECT * FROM automation_templates WHERE id = ?').get(templateId);
@@ -1167,19 +1180,20 @@ async function logCommunication(comm: {
     const id = uuidv4();
     const now = new Date().toISOString();
 
-    if (IS_PRODUCTION && sql) {
-      await sql`
-        INSERT INTO communications (
+    if (IS_PRODUCTION && pgPool) {
+      await pgPool.query(
+        `INSERT INTO communications (
           id, team_id, type, direction, contact_id, lead_id, deal_id,
           from_address, to_address, subject, body, status, external_id, created_at
-        ) VALUES (
-          ${id}, ${comm.teamId}, ${comm.type}, ${comm.direction},
-          ${comm.contactId || null}, ${comm.leadId || null}, ${comm.dealId || null},
-          ${comm.fromAddress || null}, ${comm.toAddress || null},
-          ${comm.subject || null}, ${comm.body || null},
-          ${comm.status}, ${comm.externalId || null}, ${now}
-        )
-      `;
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+        [
+          id, comm.teamId, comm.type, comm.direction,
+          comm.contactId || null, comm.leadId || null, comm.dealId || null,
+          comm.fromAddress || null, comm.toAddress || null,
+          comm.subject || null, comm.body || null,
+          comm.status, comm.externalId || null, now
+        ]
+      );
     } else {
       const Database = require('better-sqlite3');
       const path = require('path');

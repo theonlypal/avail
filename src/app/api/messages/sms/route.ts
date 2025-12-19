@@ -9,11 +9,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createMessage, getMessagesByContact } from '@/lib/db-crm';
 import { sendSMS, isTwilioConfigured } from '@/lib/integrations/twilio';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -42,14 +51,15 @@ export async function GET(request: NextRequest) {
 
     if (!contactId) {
       // Get all SMS messages (across all contacts)
-      if (IS_PRODUCTION && sql) {
-        const result = await sql`
-          SELECT * FROM messages
+      if (IS_PRODUCTION && pgPool) {
+        const result = await pgPool.query(
+          `SELECT * FROM messages
           WHERE channel = 'sms'
           ORDER BY sent_at DESC
-          LIMIT ${limit} OFFSET ${offset}
-        `;
-        return NextResponse.json({ messages: result });
+          LIMIT $1 OFFSET $2`,
+          [limit, offset]
+        );
+        return NextResponse.json({ messages: result.rows });
       } else {
         const db = getSqliteDb();
         const messages = db

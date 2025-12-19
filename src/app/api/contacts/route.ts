@@ -1,18 +1,26 @@
 /**
  * Contacts API Route - PRODUCTION READY
  *
- * Real CRUD operations for contacts with Neon Postgres
+ * Real CRUD operations for contacts with PostgreSQL
  * GET: List all contacts (with optional filtering)
  * POST: Create new contact
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createContact, getContactsByBusiness, getContactById } from '@/lib/db-crm';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
 const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
-const sql = IS_PRODUCTION && postgresUrl ? neon(postgresUrl) : null;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 /**
  * GET /api/contacts
@@ -37,7 +45,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all contacts with optional search - JOIN with businesses table
-    if (!sql) {
+    if (!pgPool) {
       return NextResponse.json({
         contacts: [],
         message: 'Database not configured'
@@ -46,25 +54,26 @@ export async function GET(request: NextRequest) {
 
     // Try to query with businesses table, fall back to just contacts if it doesn't exist
     try {
-      let query;
+      let result;
       if (search) {
-        query = sql`
+        const searchPattern = `%${search}%`;
+        result = await pgPool.query(`
           SELECT
             c.*,
             b.name as business_name,
             b.industry as business_industry
           FROM contacts c
           LEFT JOIN businesses b ON c.business_id = b.id
-          WHERE c.first_name ILIKE ${`%${search}%`}
-             OR c.last_name ILIKE ${`%${search}%`}
-             OR c.email ILIKE ${`%${search}%`}
-             OR c.phone ILIKE ${`%${search}%`}
-             OR b.name ILIKE ${`%${search}%`}
+          WHERE c.first_name ILIKE $1
+             OR c.last_name ILIKE $1
+             OR c.email ILIKE $1
+             OR c.phone ILIKE $1
+             OR b.name ILIKE $1
           ORDER BY c.created_at DESC
-          LIMIT ${limit} OFFSET ${offset}
-        `;
+          LIMIT $2 OFFSET $3
+        `, [searchPattern, limit, offset]);
       } else {
-        query = sql`
+        result = await pgPool.query(`
           SELECT
             c.*,
             b.name as business_name,
@@ -72,37 +81,36 @@ export async function GET(request: NextRequest) {
           FROM contacts c
           LEFT JOIN businesses b ON c.business_id = b.id
           ORDER BY c.created_at DESC
-          LIMIT ${limit} OFFSET ${offset}
-        `;
+          LIMIT $1 OFFSET $2
+        `, [limit, offset]);
       }
-      const contacts = await query;
-      return NextResponse.json({ contacts });
+      return NextResponse.json({ contacts: result.rows });
     } catch (joinError: any) {
       // If businesses table doesn't exist, fall back to just contacts
       if (joinError.code === '42P01') {
         console.warn('[Contacts API] businesses table does not exist, returning contacts only');
-        let fallbackQuery;
+        let result;
         if (search) {
-          fallbackQuery = sql`
+          const searchPattern = `%${search}%`;
+          result = await pgPool.query(`
             SELECT c.*
             FROM contacts c
-            WHERE c.first_name ILIKE ${`%${search}%`}
-               OR c.last_name ILIKE ${`%${search}%`}
-               OR c.email ILIKE ${`%${search}%`}
-               OR c.phone ILIKE ${`%${search}%`}
+            WHERE c.first_name ILIKE $1
+               OR c.last_name ILIKE $1
+               OR c.email ILIKE $1
+               OR c.phone ILIKE $1
             ORDER BY c.created_at DESC
-            LIMIT ${limit} OFFSET ${offset}
-          `;
+            LIMIT $2 OFFSET $3
+          `, [searchPattern, limit, offset]);
         } else {
-          fallbackQuery = sql`
+          result = await pgPool.query(`
             SELECT c.*
             FROM contacts c
             ORDER BY c.created_at DESC
-            LIMIT ${limit} OFFSET ${offset}
-          `;
+            LIMIT $1 OFFSET $2
+          `, [limit, offset]);
         }
-        const contacts = await fallbackQuery;
-        return NextResponse.json({ contacts });
+        return NextResponse.json({ contacts: result.rows });
       }
       throw joinError;
     }

@@ -6,12 +6,22 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import { getAutomationDb } from '@/lib/db-automation';
 import { v4 as uuidv4 } from 'uuid';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 /**
  * GET /api/automations/templates
@@ -25,18 +35,19 @@ export async function GET(request: NextRequest) {
     const teamId = searchParams.get('team_id') || 'default-team';
     const type = searchParams.get('type');
 
-    if (IS_PRODUCTION && sql) {
-      let query = `SELECT * FROM automation_templates WHERE team_id = '${teamId}'`;
+    if (IS_PRODUCTION && pgPool) {
+      let query = 'SELECT * FROM automation_templates WHERE team_id = $1';
+      const params: any[] = [teamId];
 
       if (type) {
-        query += ` AND type = '${type}'`;
+        query += ' AND type = $2';
+        params.push(type);
       }
 
-      query += ` ORDER BY name ASC`;
+      query += ' ORDER BY name ASC';
 
-      const result = await sql.unsafe(query);
-      const templates = Array.isArray(result) ? result : [];
-      return NextResponse.json({ templates });
+      const result = await pgPool.query(query, params);
+      return NextResponse.json({ templates: result.rows });
     } else {
       const db = getAutomationDb();
 
@@ -98,15 +109,16 @@ export async function POST(request: NextRequest) {
     const id = uuidv4();
     const now = new Date();
 
-    if (IS_PRODUCTION && sql) {
-      const result = await sql`
-        INSERT INTO automation_templates (id, team_id, name, type, subject, body, created_at, updated_at)
-        VALUES (${id}, ${body.team_id}, ${body.name}, ${body.type}, ${body.subject || null}, ${body.body}, ${now}, ${now})
-        RETURNING *
-      `;
+    if (IS_PRODUCTION && pgPool) {
+      const result = await pgPool.query(
+        `INSERT INTO automation_templates (id, team_id, name, type, subject, body, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING *`,
+        [id, body.team_id, body.name, body.type, body.subject || null, body.body, now, now]
+      );
 
       console.log('✅ Automation template created:', id);
-      return NextResponse.json({ success: true, template: result[0] });
+      return NextResponse.json({ success: true, template: result.rows[0] });
 
     } else {
       const db = getAutomationDb();

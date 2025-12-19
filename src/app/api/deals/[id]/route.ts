@@ -7,11 +7,21 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -25,9 +35,9 @@ function getSqliteDb(): any {
 }
 
 async function getDealById(id: string) {
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`SELECT * FROM deals WHERE id = ${id}`;
-    return result[0] || null;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query('SELECT * FROM deals WHERE id = $1', [id]);
+    return result.rows[0] || null;
   } else {
     const db = getSqliteDb();
     return db.prepare('SELECT * FROM deals WHERE id = ?').get(id) || null;
@@ -107,12 +117,23 @@ export async function PUT(
 
     updates.updated_at = now;
 
-    if (IS_PRODUCTION && sql) {
-      // Postgres update - Build SET clause
-      const setClause = Object.keys(updates).map(key => `${key} = '${updates[key]}'`).join(', ');
-      const result = await sql`UPDATE deals SET ${sql.unsafe(setClause)} WHERE id = ${id} RETURNING *`;
+    if (IS_PRODUCTION && pgPool) {
+      // Postgres update - Build SET clause with parameterized values
+      const keys = Object.keys(updates);
+      const values = keys.map(key => {
+        const val = updates[key];
+        if (val instanceof Date) return val.toISOString();
+        return val;
+      });
+      values.push(id);
 
-      if (result.length === 0) {
+      const setClause = keys.map((key, idx) => `${key} = $${idx + 1}`).join(', ');
+      const result = await pgPool.query(
+        `UPDATE deals SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`,
+        values
+      );
+
+      if (result.rows.length === 0) {
         return NextResponse.json(
           { error: 'Deal not found' },
           { status: 404 }
@@ -120,7 +141,7 @@ export async function PUT(
       }
 
       console.log('✅ Deal updated via API:', id, updates.stage ? `→ ${updates.stage}` : '');
-      return NextResponse.json({ success: true, deal: result[0] });
+      return NextResponse.json({ success: true, deal: result.rows[0] });
 
     } else {
       // SQLite
@@ -167,10 +188,10 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    if (IS_PRODUCTION && sql) {
-      const result = await sql`DELETE FROM deals WHERE id = ${id} RETURNING id`;
+    if (IS_PRODUCTION && pgPool) {
+      const result = await pgPool.query('DELETE FROM deals WHERE id = $1 RETURNING id', [id]);
 
-      if (result.length === 0) {
+      if (result.rows.length === 0) {
         return NextResponse.json(
           { error: 'Deal not found' },
           { status: 404 }

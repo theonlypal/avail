@@ -7,11 +7,21 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -25,9 +35,9 @@ function getSqliteDb(): any {
 }
 
 async function getTagById(id: string) {
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`SELECT * FROM tags WHERE id = ${id}`;
-    return result[0] || null;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query('SELECT * FROM tags WHERE id = $1', [id]);
+    return result.rows[0] || null;
   } else {
     const db = getSqliteDb();
     return db.prepare('SELECT * FROM tags WHERE id = ?').get(id) || null;
@@ -94,10 +104,10 @@ export async function PUT(
       );
     }
 
-    if (IS_PRODUCTION && sql) {
+    if (IS_PRODUCTION && pgPool) {
       // Check if tag exists and get team_id for uniqueness check
-      const existing = await sql`SELECT * FROM tags WHERE id = ${id}`;
-      if (existing.length === 0) {
+      const existing = await pgPool.query('SELECT * FROM tags WHERE id = $1', [id]);
+      if (existing.rows.length === 0) {
         return NextResponse.json(
           { error: 'Tag not found' },
           { status: 404 }
@@ -106,8 +116,8 @@ export async function PUT(
 
       // Check for duplicate name if updating name
       if (body.name) {
-        const duplicate = await sql`SELECT id FROM tags WHERE team_id = ${existing[0].team_id} AND name = ${body.name} AND id != ${id}`;
-        if (duplicate.length > 0) {
+        const duplicate = await pgPool.query('SELECT id FROM tags WHERE team_id = $1 AND name = $2 AND id != $3', [existing.rows[0].team_id, body.name, id]);
+        if (duplicate.rows.length > 0) {
           return NextResponse.json(
             { error: 'A tag with this name already exists' },
             { status: 409 }
@@ -115,11 +125,12 @@ export async function PUT(
         }
       }
 
-      const setClause = updates.map((field, i) => `${field} = '${values[i]}'`).join(', ');
-      const result = await sql`UPDATE tags SET ${sql.unsafe(setClause)} WHERE id = ${id} RETURNING *`;
+      const setClause = updates.map((field, i) => `${field} = $${i + 1}`).join(', ');
+      values.push(id);
+      const result = await pgPool.query(`UPDATE tags SET ${setClause} WHERE id = $${values.length} RETURNING *`, values);
 
       console.log('✅ Tag updated via API:', id);
-      return NextResponse.json({ success: true, tag: result[0] });
+      return NextResponse.json({ success: true, tag: result.rows[0] });
 
     } else {
       const db = getSqliteDb();
@@ -171,13 +182,13 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    if (IS_PRODUCTION && sql) {
+    if (IS_PRODUCTION && pgPool) {
       // Delete tag assignments first
-      await sql`DELETE FROM contact_tags WHERE tag_id = ${id}`;
+      await pgPool.query('DELETE FROM contact_tags WHERE tag_id = $1', [id]);
 
-      const result = await sql`DELETE FROM tags WHERE id = ${id} RETURNING id`;
+      const result = await pgPool.query('DELETE FROM tags WHERE id = $1 RETURNING id', [id]);
 
-      if (result.length === 0) {
+      if (result.rows.length === 0) {
         return NextResponse.json(
           { error: 'Tag not found' },
           { status: 404 }

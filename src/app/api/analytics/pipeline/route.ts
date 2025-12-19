@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 import fs from 'fs';
 
@@ -22,9 +22,16 @@ if (!IS_PRODUCTION) {
   try { Database = require('better-sqlite3'); } catch { /* expected in production */ }
 }
 
-const sql: NeonQueryFunction<false, false> | null = IS_PRODUCTION && process.env.POSTGRES_URL
-  ? neon(process.env.POSTGRES_URL)
-  : null;
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 const DB_PATH = path.join(process.cwd(), 'data', 'leadly.db');
 
@@ -51,7 +58,7 @@ export async function GET(request: NextRequest) {
   try {
     let analytics;
 
-    if (IS_PRODUCTION && sql) {
+    if (IS_PRODUCTION && pgPool) {
       analytics = await getProductionAnalytics(teamId, parseInt(period));
     } else {
       analytics = getLocalAnalytics(teamId, parseInt(period));
@@ -69,32 +76,33 @@ export async function GET(request: NextRequest) {
 
 async function getProductionAnalytics(teamId: string, periodDays: number) {
   // Stage distribution
-  const stagesResult = await sql!`
-    SELECT
+  const stagesResult = await pgPool!.query(
+    `SELECT
       stage,
       COUNT(*) as count,
       COALESCE(SUM(value), 0) as total_value,
       COALESCE(AVG(value), 0) as avg_value
     FROM deals
     GROUP BY stage
-    ORDER BY count DESC
-  `;
+    ORDER BY count DESC`
+  );
 
   // Win/loss stats
-  const winLossResult = await sql!`
-    SELECT
+  const winLossResult = await pgPool!.query(
+    `SELECT
       COUNT(CASE WHEN stage = 'won' THEN 1 END) as won,
       COUNT(CASE WHEN stage = 'lost' THEN 1 END) as lost,
       COUNT(*) as total,
       COALESCE(SUM(CASE WHEN stage = 'won' THEN value ELSE 0 END), 0) as won_value,
       COALESCE(SUM(CASE WHEN stage = 'lost' THEN value ELSE 0 END), 0) as lost_value
     FROM deals
-    WHERE created_at >= NOW() - MAKE_INTERVAL(days => ${periodDays})
-  `;
+    WHERE created_at >= NOW() - MAKE_INTERVAL(days => $1)`,
+    [periodDays]
+  );
 
   // Monthly trend (last 6 months)
-  const trendResult = await sql!`
-    SELECT
+  const trendResult = await pgPool!.query(
+    `SELECT
       DATE_TRUNC('month', created_at) as month,
       COUNT(*) as deals_created,
       COUNT(CASE WHEN stage = 'won' THEN 1 END) as deals_won,
@@ -102,12 +110,12 @@ async function getProductionAnalytics(teamId: string, periodDays: number) {
     FROM deals
     WHERE created_at >= NOW() - INTERVAL '6 months'
     GROUP BY DATE_TRUNC('month', created_at)
-    ORDER BY month ASC
-  `;
+    ORDER BY month ASC`
+  );
 
   // Lead score distribution
-  const scoreDistribution = await sql!`
-    SELECT
+  const scoreDistribution = await pgPool!.query(
+    `SELECT
       CASE
         WHEN opportunity_score >= 90 THEN '90-100'
         WHEN opportunity_score >= 80 THEN '80-89'
@@ -118,39 +126,42 @@ async function getProductionAnalytics(teamId: string, periodDays: number) {
       END as range,
       COUNT(*) as count
     FROM leads
-    WHERE team_id = ${teamId}
+    WHERE team_id = $1
     GROUP BY range
-    ORDER BY range DESC
-  `;
+    ORDER BY range DESC`,
+    [teamId]
+  );
 
   // Lead sources
-  const sourcesResult = await sql!`
-    SELECT
+  const sourcesResult = await pgPool!.query(
+    `SELECT
       COALESCE(source, 'Unknown') as source,
       COUNT(*) as count
     FROM leads
-    WHERE team_id = ${teamId}
+    WHERE team_id = $1
     GROUP BY source
     ORDER BY count DESC
-    LIMIT 10
-  `;
+    LIMIT 10`,
+    [teamId]
+  );
 
   // Activity stats
-  const activityStats = await sql!`
-    SELECT
+  const activityStats = await pgPool!.query(
+    `SELECT
       type,
       COUNT(*) as count,
       COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed
     FROM activities
-    WHERE team_id = ${teamId}
-    GROUP BY type
-  `;
+    WHERE team_id = $1
+    GROUP BY type`,
+    [teamId]
+  );
 
-  const winLoss = winLossResult[0] || { won: 0, lost: 0, total: 0, won_value: 0, lost_value: 0 };
+  const winLoss = winLossResult.rows[0] || { won: 0, lost: 0, total: 0, won_value: 0, lost_value: 0 };
   const winRate = winLoss.total > 0 ? Math.round((winLoss.won / winLoss.total) * 100) : 0;
 
   return {
-    stages: stagesResult.map((r: any) => ({
+    stages: stagesResult.rows.map((r: any) => ({
       name: r.stage,
       count: Number(r.count),
       totalValue: Number(r.total_value),
@@ -164,21 +175,21 @@ async function getProductionAnalytics(teamId: string, periodDays: number) {
       lostValue: Number(winLoss.lost_value),
       winRate,
     },
-    trend: trendResult.map((r: any) => ({
+    trend: trendResult.rows.map((r: any) => ({
       month: r.month,
       dealsCreated: Number(r.deals_created),
       dealsWon: Number(r.deals_won),
       wonValue: Number(r.won_value),
     })),
-    scoreDistribution: scoreDistribution.map((r: any) => ({
+    scoreDistribution: scoreDistribution.rows.map((r: any) => ({
       range: r.range,
       count: Number(r.count),
     })),
-    sources: sourcesResult.map((r: any) => ({
+    sources: sourcesResult.rows.map((r: any) => ({
       name: r.source,
       count: Number(r.count),
     })),
-    activities: activityStats.map((r: any) => ({
+    activities: activityStats.rows.map((r: any) => ({
       type: r.type,
       count: Number(r.count),
       completed: Number(r.completed),

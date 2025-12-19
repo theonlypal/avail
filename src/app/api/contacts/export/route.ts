@@ -5,11 +5,21 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -47,23 +57,28 @@ export async function GET(request: NextRequest) {
 
     let contacts: any[] = [];
 
-    if (IS_PRODUCTION && sql) {
-      let query = `
+    if (IS_PRODUCTION && pgPool) {
+      const conditions: string[] = ['team_id = $1'];
+      const params: any[] = [teamId];
+      let paramIndex = 2;
+
+      if (lifecycleStage) {
+        conditions.push(`lifecycle_stage = $${paramIndex}`);
+        params.push(lifecycleStage);
+        paramIndex++;
+      }
+
+      const query = `
         SELECT
           first_name, last_name, email, phone, company, title,
           lifecycle_stage, source, created_at
         FROM contacts
-        WHERE team_id = '${teamId}'
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY created_at DESC
       `;
 
-      if (lifecycleStage) {
-        query += ` AND lifecycle_stage = '${lifecycleStage}'`;
-      }
-
-      query += ` ORDER BY created_at DESC`;
-
-      const result = await sql.unsafe(query);
-      contacts = Array.isArray(result) ? result : [];
+      const result = await pgPool.query(query, params);
+      contacts = result.rows;
     } else {
       const db = getSqliteDb();
 

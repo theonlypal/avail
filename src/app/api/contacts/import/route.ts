@@ -5,12 +5,22 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -130,11 +140,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (IS_PRODUCTION && sql) {
+    if (IS_PRODUCTION && pgPool) {
       // Check for existing emails
       const emails = validContacts.map(c => c.email);
-      const existing = await sql`SELECT email FROM contacts WHERE email = ANY(${emails})`;
-      const existingEmails = new Set(existing.map((r: any) => r.email.toLowerCase()));
+      const existing = await pgPool.query('SELECT email FROM contacts WHERE email = ANY($1)', [emails]);
+      const existingEmails = new Set(existing.rows.map((r: any) => r.email.toLowerCase()));
 
       for (const contact of validContacts) {
         if (existingEmails.has(contact.email)) {
@@ -144,10 +154,10 @@ export async function POST(request: NextRequest) {
         }
 
         try {
-          await sql`
+          await pgPool.query(`
             INSERT INTO contacts (id, team_id, business_id, first_name, last_name, email, phone, company, title, lifecycle_stage, source, created_at, updated_at)
-            VALUES (${contact.id}, ${team_id}, ${'import'}, ${contact.first_name}, ${contact.last_name}, ${contact.email}, ${contact.phone}, ${contact.company}, ${contact.title}, ${contact.lifecycle_stage}, 'import', ${now}, ${now})
-          `;
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          `, [contact.id, team_id, 'import', contact.first_name, contact.last_name, contact.email, contact.phone, contact.company, contact.title, contact.lifecycle_stage, 'import', now, now]);
           results.imported++;
         } catch (err: any) {
           results.errors.push(`${contact.email}: ${err.message}`);

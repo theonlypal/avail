@@ -7,11 +7,21 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -25,9 +35,9 @@ function getSqliteDb(): any {
 }
 
 async function getActivityById(id: string) {
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`SELECT * FROM activities WHERE id = ${id}`;
-    return result[0] || null;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query('SELECT * FROM activities WHERE id = $1', [id]);
+    return result.rows[0] || null;
   } else {
     const db = getSqliteDb();
     return db.prepare('SELECT * FROM activities WHERE id = ?').get(id) || null;
@@ -124,17 +134,23 @@ export async function PUT(
 
     updates.updated_at = now;
 
-    if (IS_PRODUCTION && sql) {
-      // Build SET clause for Postgres
-      const setClause = Object.keys(updates).map(key => {
+    if (IS_PRODUCTION && pgPool) {
+      // Build SET clause for Postgres with parameterized values
+      const keys = Object.keys(updates);
+      const values = keys.map(key => {
         const val = updates[key];
-        if (val === null) return `${key} = NULL`;
-        return `${key} = '${val}'`;
-      }).join(', ');
+        if (val instanceof Date) return val.toISOString();
+        return val;
+      });
+      values.push(id);
 
-      const result = await sql`UPDATE activities SET ${sql.unsafe(setClause)} WHERE id = ${id} RETURNING *`;
+      const setClause = keys.map((key, idx) => `${key} = $${idx + 1}`).join(', ');
+      const result = await pgPool.query(
+        `UPDATE activities SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`,
+        values
+      );
 
-      if (result.length === 0) {
+      if (result.rows.length === 0) {
         return NextResponse.json(
           { error: 'Activity not found' },
           { status: 404 }
@@ -142,7 +158,7 @@ export async function PUT(
       }
 
       console.log('✅ Activity updated via API:', id);
-      return NextResponse.json({ success: true, activity: result[0] });
+      return NextResponse.json({ success: true, activity: result.rows[0] });
 
     } else {
       const db = getSqliteDb();
@@ -188,10 +204,10 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    if (IS_PRODUCTION && sql) {
-      const result = await sql`DELETE FROM activities WHERE id = ${id} RETURNING id`;
+    if (IS_PRODUCTION && pgPool) {
+      const result = await pgPool.query('DELETE FROM activities WHERE id = $1 RETURNING id', [id]);
 
-      if (result.length === 0) {
+      if (result.rows.length === 0) {
         return NextResponse.json(
           { error: 'Activity not found' },
           { status: 404 }

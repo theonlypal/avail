@@ -7,11 +7,21 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -48,9 +58,47 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '100');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    if (IS_PRODUCTION && sql) {
-      // Build Postgres query with filters
-      let query = `
+    if (IS_PRODUCTION && pgPool) {
+      // Build Postgres query with parameterized filters
+      const conditions: string[] = [];
+      const params: any[] = [];
+      let paramIndex = 1;
+
+      if (status) {
+        conditions.push(`t.status = $${paramIndex}`);
+        params.push(status);
+        paramIndex++;
+      }
+      if (priority) {
+        conditions.push(`t.priority = $${paramIndex}`);
+        params.push(priority);
+        paramIndex++;
+      }
+      if (assignee_id) {
+        conditions.push(`t.assignee_id = $${paramIndex}`);
+        params.push(assignee_id);
+        paramIndex++;
+      }
+      if (due_before) {
+        conditions.push(`t.due_date < $${paramIndex}`);
+        params.push(due_before);
+        paramIndex++;
+      }
+      if (related_to_type) {
+        conditions.push(`t.related_to_type = $${paramIndex}`);
+        params.push(related_to_type);
+        paramIndex++;
+      }
+      if (related_to_id) {
+        conditions.push(`t.related_to_id = $${paramIndex}`);
+        params.push(related_to_id);
+        paramIndex++;
+      }
+
+      params.push(limit, offset);
+
+      const whereClause = conditions.length > 0 ? ' AND ' + conditions.join(' AND ') : '';
+      const query = `
         SELECT
           t.*,
           jsonb_build_object(
@@ -60,35 +108,21 @@ export async function GET(request: NextRequest) {
           ) as assignee
         FROM tasks t
         LEFT JOIN team_members tm ON t.assignee_id = tm.id
-        WHERE 1=1
-      `;
-      const conditions: string[] = [];
-
-      if (status) conditions.push(`t.status = '${status}'`);
-      if (priority) conditions.push(`t.priority = '${priority}'`);
-      if (assignee_id) conditions.push(`t.assignee_id = '${assignee_id}'`);
-      if (due_before) conditions.push(`t.due_date < '${due_before}'`);
-      if (related_to_type) conditions.push(`t.related_to_type = '${related_to_type}'`);
-      if (related_to_id) conditions.push(`t.related_to_id = '${related_to_id}'`);
-
-      if (conditions.length > 0) {
-        query += ' AND ' + conditions.join(' AND ');
-      }
-
-      query += ` ORDER BY
-        CASE t.priority
-          WHEN 'urgent' THEN 1
-          WHEN 'high' THEN 2
-          WHEN 'medium' THEN 3
-          WHEN 'low' THEN 4
-        END,
-        t.due_date ASC,
-        t.created_at DESC
-        LIMIT ${limit} OFFSET ${offset}
+        WHERE 1=1 ${whereClause}
+        ORDER BY
+          CASE t.priority
+            WHEN 'urgent' THEN 1
+            WHEN 'high' THEN 2
+            WHEN 'medium' THEN 3
+            WHEN 'low' THEN 4
+          END,
+          t.due_date ASC,
+          t.created_at DESC
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;
 
-      const tasks = await sql.unsafe(query);
-      return NextResponse.json({ tasks });
+      const result = await pgPool.query(query, params);
+      return NextResponse.json({ tasks: result.rows });
 
     } else {
       // SQLite with JOIN
@@ -274,27 +308,27 @@ export async function POST(request: NextRequest) {
       updated_at: now,
     };
 
-    if (IS_PRODUCTION && sql) {
-      const result = await sql`
+    if (IS_PRODUCTION && pgPool) {
+      const result = await pgPool.query(`
         INSERT INTO tasks (
           id, team_id, title, description, status, priority,
           due_date, completed_at, assignee_id, created_by,
           related_to_type, related_to_id, parent_task_id,
           estimated_hours, actual_hours, tags,
           created_at, updated_at
-        ) VALUES (
-          ${taskData.id}, ${taskData.team_id}, ${taskData.title}, ${taskData.description},
-          ${taskData.status}, ${taskData.priority}, ${taskData.due_date}, ${taskData.completed_at},
-          ${taskData.assignee_id}, ${taskData.created_by}, ${taskData.related_to_type},
-          ${taskData.related_to_id}, ${taskData.parent_task_id}, ${taskData.estimated_hours},
-          ${taskData.actual_hours}, ${JSON.stringify(taskData.tags)},
-          ${taskData.created_at.toISOString()}, ${taskData.updated_at.toISOString()}
-        )
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
         RETURNING *
-      `;
+      `, [
+        taskData.id, taskData.team_id, taskData.title, taskData.description,
+        taskData.status, taskData.priority, taskData.due_date, taskData.completed_at,
+        taskData.assignee_id, taskData.created_by, taskData.related_to_type,
+        taskData.related_to_id, taskData.parent_task_id, taskData.estimated_hours,
+        taskData.actual_hours, JSON.stringify(taskData.tags),
+        taskData.created_at.toISOString(), taskData.updated_at.toISOString()
+      ]);
 
-      console.log('✅ Task created via API:', result[0].id, '-', result[0].title);
-      return NextResponse.json({ success: true, task: result[0] });
+      console.log('✅ Task created via API:', result.rows[0].id, '-', result.rows[0].title);
+      return NextResponse.json({ success: true, task: result.rows[0] });
 
     } else {
       const db = getSqliteDb();

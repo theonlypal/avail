@@ -8,11 +8,22 @@
  * - automation_queue: Scheduled actions pending execution
  */
 
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+// PostgreSQL Pool for production (Railway)
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 10,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // Only import better-sqlite3 in development to avoid native module issues in production
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -105,9 +116,9 @@ export function getAutomationDb(): any {
 
 // Initialize PostgreSQL tables for production
 export async function initAutomationTablesPostgres() {
-  if (!sql) return;
+  if (!pgPool) return;
 
-  await sql`
+  await pgPool.query(`
     CREATE TABLE IF NOT EXISTS automation_rules (
       id TEXT PRIMARY KEY,
       team_id TEXT NOT NULL,
@@ -122,9 +133,9 @@ export async function initAutomationTablesPostgres() {
       created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     )
-  `;
+  `);
 
-  await sql`
+  await pgPool.query(`
     CREATE TABLE IF NOT EXISTS automation_templates (
       id TEXT PRIMARY KEY,
       team_id TEXT NOT NULL,
@@ -135,9 +146,9 @@ export async function initAutomationTablesPostgres() {
       created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     )
-  `;
+  `);
 
-  await sql`
+  await pgPool.query(`
     CREATE TABLE IF NOT EXISTS automation_logs (
       id TEXT PRIMARY KEY,
       rule_id TEXT NOT NULL,
@@ -150,9 +161,9 @@ export async function initAutomationTablesPostgres() {
       error_message TEXT,
       executed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     )
-  `;
+  `);
 
-  await sql`
+  await pgPool.query(`
     CREATE TABLE IF NOT EXISTS automation_queue (
       id TEXT PRIMARY KEY,
       rule_id TEXT NOT NULL,
@@ -166,13 +177,13 @@ export async function initAutomationTablesPostgres() {
       last_attempt_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     )
-  `;
+  `);
 
   // Create indexes
-  await sql`CREATE INDEX IF NOT EXISTS idx_automation_rules_team ON automation_rules(team_id)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_automation_rules_trigger ON automation_rules(trigger_type, is_active)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_automation_logs_rule ON automation_logs(rule_id)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_automation_queue_scheduled ON automation_queue(scheduled_for, status)`;
+  await pgPool.query('CREATE INDEX IF NOT EXISTS idx_automation_rules_team ON automation_rules(team_id)');
+  await pgPool.query('CREATE INDEX IF NOT EXISTS idx_automation_rules_trigger ON automation_rules(trigger_type, is_active)');
+  await pgPool.query('CREATE INDEX IF NOT EXISTS idx_automation_logs_rule ON automation_logs(rule_id)');
+  await pgPool.query('CREATE INDEX IF NOT EXISTS idx_automation_queue_scheduled ON automation_queue(scheduled_for, status)');
 }
 
 // Types

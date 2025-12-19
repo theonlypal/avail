@@ -14,7 +14,7 @@
  * - Automation Templates & Logs
  */
 
-import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -31,9 +31,17 @@ if (!IS_PRODUCTION) {
   }
 }
 
-const sql: NeonQueryFunction<false, false> | null = IS_PRODUCTION && process.env.POSTGRES_URL
-  ? neon(process.env.POSTGRES_URL)
-  : null;
+// PostgreSQL Pool for production (Railway)
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 10,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 const DB_PATH = path.join(process.cwd(), 'data', 'leadly.db');
 
@@ -507,13 +515,12 @@ export async function createTag(data: Omit<Tag, 'id' | 'created_at'>): Promise<T
   const id = uuidv4();
   const now = new Date();
 
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`
-      INSERT INTO tags (id, team_id, name, color, created_at)
-      VALUES (${id}, ${data.team_id}, ${data.name}, ${data.color}, ${now})
-      RETURNING *
-    `;
-    return result[0] as Tag;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query(
+      'INSERT INTO tags (id, team_id, name, color, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [id, data.team_id, data.name, data.color, now]
+    );
+    return result.rows[0] as Tag;
   } else {
     const db = getSqliteDb();
     db.prepare(`
@@ -526,8 +533,9 @@ export async function createTag(data: Omit<Tag, 'id' | 'created_at'>): Promise<T
 }
 
 export async function getTagsByTeam(teamId: string): Promise<Tag[]> {
-  if (IS_PRODUCTION && sql) {
-    return await sql`SELECT * FROM tags WHERE team_id = ${teamId} ORDER BY name ASC` as Tag[];
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query('SELECT * FROM tags WHERE team_id = $1 ORDER BY name ASC', [teamId]);
+    return result.rows as Tag[];
   } else {
     const db = getSqliteDb();
     return db.prepare('SELECT * FROM tags WHERE team_id = ? ORDER BY name ASC').all(teamId) as Tag[];
@@ -535,8 +543,8 @@ export async function getTagsByTeam(teamId: string): Promise<Tag[]> {
 }
 
 export async function addTagToContact(contactId: string, tagId: string): Promise<void> {
-  if (IS_PRODUCTION && sql) {
-    await sql`INSERT INTO contact_tags (contact_id, tag_id) VALUES (${contactId}, ${tagId}) ON CONFLICT DO NOTHING`;
+  if (IS_PRODUCTION && pgPool) {
+    await pgPool.query('INSERT INTO contact_tags (contact_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [contactId, tagId]);
   } else {
     const db = getSqliteDb();
     db.prepare('INSERT OR IGNORE INTO contact_tags (contact_id, tag_id) VALUES (?, ?)').run(contactId, tagId);
@@ -544,8 +552,8 @@ export async function addTagToContact(contactId: string, tagId: string): Promise
 }
 
 export async function removeTagFromContact(contactId: string, tagId: string): Promise<void> {
-  if (IS_PRODUCTION && sql) {
-    await sql`DELETE FROM contact_tags WHERE contact_id = ${contactId} AND tag_id = ${tagId}`;
+  if (IS_PRODUCTION && pgPool) {
+    await pgPool.query('DELETE FROM contact_tags WHERE contact_id = $1 AND tag_id = $2', [contactId, tagId]);
   } else {
     const db = getSqliteDb();
     db.prepare('DELETE FROM contact_tags WHERE contact_id = ? AND tag_id = ?').run(contactId, tagId);
@@ -553,13 +561,12 @@ export async function removeTagFromContact(contactId: string, tagId: string): Pr
 }
 
 export async function getTagsForContact(contactId: string): Promise<Tag[]> {
-  if (IS_PRODUCTION && sql) {
-    return await sql`
-      SELECT t.* FROM tags t
-      JOIN contact_tags ct ON t.id = ct.tag_id
-      WHERE ct.contact_id = ${contactId}
-      ORDER BY t.name ASC
-    ` as Tag[];
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query(
+      'SELECT t.* FROM tags t JOIN contact_tags ct ON t.id = ct.tag_id WHERE ct.contact_id = $1 ORDER BY t.name ASC',
+      [contactId]
+    );
+    return result.rows as Tag[];
   } else {
     const db = getSqliteDb();
     return db.prepare(`
@@ -579,13 +586,12 @@ export async function createActivity(data: Omit<Activity, 'id' | 'created_at' | 
   const id = uuidv4();
   const now = new Date();
 
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`
-      INSERT INTO activities (id, team_id, type, title, description, contact_id, deal_id, lead_id, assigned_to, due_date, completed_at, priority, status, outcome, duration_minutes, metadata, created_by, created_at, updated_at)
-      VALUES (${id}, ${data.team_id}, ${data.type}, ${data.title}, ${data.description}, ${data.contact_id}, ${data.deal_id}, ${data.lead_id}, ${data.assigned_to}, ${data.due_date}, ${data.completed_at}, ${data.priority}, ${data.status}, ${data.outcome}, ${data.duration_minutes}, ${JSON.stringify(data.metadata || {})}, ${data.created_by}, ${now}, ${now})
-      RETURNING *
-    `;
-    return result[0] as Activity;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query(
+      'INSERT INTO activities (id, team_id, type, title, description, contact_id, deal_id, lead_id, assigned_to, due_date, completed_at, priority, status, outcome, duration_minutes, metadata, created_by, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING *',
+      [id, data.team_id, data.type, data.title, data.description, data.contact_id, data.deal_id, data.lead_id, data.assigned_to, data.due_date, data.completed_at, data.priority, data.status, data.outcome, data.duration_minutes, JSON.stringify(data.metadata || {}), data.created_by, now, now]
+    );
+    return result.rows[0] as Activity;
   } else {
     const db = getSqliteDb();
     db.prepare(`
@@ -606,8 +612,9 @@ export async function createActivity(data: Omit<Activity, 'id' | 'created_at' | 
 }
 
 export async function getActivitiesByContact(contactId: string): Promise<Activity[]> {
-  if (IS_PRODUCTION && sql) {
-    return await sql`SELECT * FROM activities WHERE contact_id = ${contactId} ORDER BY created_at DESC` as Activity[];
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query('SELECT * FROM activities WHERE contact_id = $1 ORDER BY created_at DESC', [contactId]);
+    return result.rows as Activity[];
   } else {
     const db = getSqliteDb();
     return db.prepare('SELECT * FROM activities WHERE contact_id = ? ORDER BY created_at DESC').all(contactId) as Activity[];
@@ -615,8 +622,9 @@ export async function getActivitiesByContact(contactId: string): Promise<Activit
 }
 
 export async function getActivitiesByDeal(dealId: string): Promise<Activity[]> {
-  if (IS_PRODUCTION && sql) {
-    return await sql`SELECT * FROM activities WHERE deal_id = ${dealId} ORDER BY created_at DESC` as Activity[];
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query('SELECT * FROM activities WHERE deal_id = $1 ORDER BY created_at DESC', [dealId]);
+    return result.rows as Activity[];
   } else {
     const db = getSqliteDb();
     return db.prepare('SELECT * FROM activities WHERE deal_id = ? ORDER BY created_at DESC').all(dealId) as Activity[];
@@ -624,11 +632,13 @@ export async function getActivitiesByDeal(dealId: string): Promise<Activity[]> {
 }
 
 export async function getPendingActivities(teamId: string, assignedTo?: string): Promise<Activity[]> {
-  if (IS_PRODUCTION && sql) {
+  if (IS_PRODUCTION && pgPool) {
     if (assignedTo) {
-      return await sql`SELECT * FROM activities WHERE team_id = ${teamId} AND assigned_to = ${assignedTo} AND status IN ('pending', 'in_progress') ORDER BY due_date ASC NULLS LAST` as Activity[];
+      const result = await pgPool.query("SELECT * FROM activities WHERE team_id = $1 AND assigned_to = $2 AND status IN ('pending', 'in_progress') ORDER BY due_date ASC NULLS LAST", [teamId, assignedTo]);
+      return result.rows as Activity[];
     }
-    return await sql`SELECT * FROM activities WHERE team_id = ${teamId} AND status IN ('pending', 'in_progress') ORDER BY due_date ASC NULLS LAST` as Activity[];
+    const result = await pgPool.query("SELECT * FROM activities WHERE team_id = $1 AND status IN ('pending', 'in_progress') ORDER BY due_date ASC NULLS LAST", [teamId]);
+    return result.rows as Activity[];
   } else {
     const db = getSqliteDb();
     if (assignedTo) {
@@ -640,8 +650,8 @@ export async function getPendingActivities(teamId: string, assignedTo?: string):
 
 export async function completeActivity(id: string): Promise<void> {
   const now = new Date();
-  if (IS_PRODUCTION && sql) {
-    await sql`UPDATE activities SET status = 'completed', completed_at = ${now}, updated_at = ${now} WHERE id = ${id}`;
+  if (IS_PRODUCTION && pgPool) {
+    await pgPool.query("UPDATE activities SET status = 'completed', completed_at = $1, updated_at = $2 WHERE id = $3", [now, now, id]);
   } else {
     const db = getSqliteDb();
     db.prepare("UPDATE activities SET status = 'completed', completed_at = ?, updated_at = ? WHERE id = ?").run(now.toISOString(), now.toISOString(), id);
@@ -656,13 +666,12 @@ export async function createNote(data: Omit<Note, 'id' | 'created_at' | 'updated
   const id = uuidv4();
   const now = new Date();
 
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`
-      INSERT INTO notes (id, team_id, content, contact_id, deal_id, lead_id, is_pinned, created_by, created_at, updated_at)
-      VALUES (${id}, ${data.team_id}, ${data.content}, ${data.contact_id}, ${data.deal_id}, ${data.lead_id}, ${data.is_pinned}, ${data.created_by}, ${now}, ${now})
-      RETURNING *
-    `;
-    return result[0] as Note;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query(
+      'INSERT INTO notes (id, team_id, content, contact_id, deal_id, lead_id, is_pinned, created_by, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [id, data.team_id, data.content, data.contact_id, data.deal_id, data.lead_id, data.is_pinned, data.created_by, now, now]
+    );
+    return result.rows[0] as Note;
   } else {
     const db = getSqliteDb();
     db.prepare(`
@@ -675,8 +684,9 @@ export async function createNote(data: Omit<Note, 'id' | 'created_at' | 'updated
 }
 
 export async function getNotesByContact(contactId: string): Promise<Note[]> {
-  if (IS_PRODUCTION && sql) {
-    return await sql`SELECT * FROM notes WHERE contact_id = ${contactId} ORDER BY is_pinned DESC, created_at DESC` as Note[];
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query('SELECT * FROM notes WHERE contact_id = $1 ORDER BY is_pinned DESC, created_at DESC', [contactId]);
+    return result.rows as Note[];
   } else {
     const db = getSqliteDb();
     return db.prepare('SELECT * FROM notes WHERE contact_id = ? ORDER BY is_pinned DESC, created_at DESC').all(contactId) as Note[];
@@ -684,8 +694,9 @@ export async function getNotesByContact(contactId: string): Promise<Note[]> {
 }
 
 export async function getNotesByDeal(dealId: string): Promise<Note[]> {
-  if (IS_PRODUCTION && sql) {
-    return await sql`SELECT * FROM notes WHERE deal_id = ${dealId} ORDER BY is_pinned DESC, created_at DESC` as Note[];
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query('SELECT * FROM notes WHERE deal_id = $1 ORDER BY is_pinned DESC, created_at DESC', [dealId]);
+    return result.rows as Note[];
   } else {
     const db = getSqliteDb();
     return db.prepare('SELECT * FROM notes WHERE deal_id = ? ORDER BY is_pinned DESC, created_at DESC').all(dealId) as Note[];
@@ -700,13 +711,12 @@ export async function createCommunication(data: Omit<Communication, 'id' | 'crea
   const id = uuidv4();
   const now = new Date();
 
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`
-      INSERT INTO communications (id, team_id, type, direction, contact_id, deal_id, lead_id, from_address, to_address, subject, body, status, external_id, metadata, created_at)
-      VALUES (${id}, ${data.team_id}, ${data.type}, ${data.direction}, ${data.contact_id}, ${data.deal_id}, ${data.lead_id}, ${data.from_address}, ${data.to_address}, ${data.subject}, ${data.body}, ${data.status}, ${data.external_id}, ${JSON.stringify(data.metadata || {})}, ${now})
-      RETURNING *
-    `;
-    return result[0] as Communication;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query(
+      'INSERT INTO communications (id, team_id, type, direction, contact_id, deal_id, lead_id, from_address, to_address, subject, body, status, external_id, metadata, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *',
+      [id, data.team_id, data.type, data.direction, data.contact_id, data.deal_id, data.lead_id, data.from_address, data.to_address, data.subject, data.body, data.status, data.external_id, JSON.stringify(data.metadata || {}), now]
+    );
+    return result.rows[0] as Communication;
   } else {
     const db = getSqliteDb();
     db.prepare(`
@@ -719,8 +729,9 @@ export async function createCommunication(data: Omit<Communication, 'id' | 'crea
 }
 
 export async function getCommunicationsByContact(contactId: string): Promise<Communication[]> {
-  if (IS_PRODUCTION && sql) {
-    return await sql`SELECT * FROM communications WHERE contact_id = ${contactId} ORDER BY created_at DESC` as Communication[];
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query('SELECT * FROM communications WHERE contact_id = $1 ORDER BY created_at DESC', [contactId]);
+    return result.rows as Communication[];
   } else {
     const db = getSqliteDb();
     return db.prepare('SELECT * FROM communications WHERE contact_id = ? ORDER BY created_at DESC').all(contactId) as Communication[];
@@ -735,13 +746,12 @@ export async function createPipeline(data: Omit<Pipeline, 'id' | 'created_at'>):
   const id = uuidv4();
   const now = new Date();
 
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`
-      INSERT INTO pipelines (id, team_id, name, is_default, stages, created_at)
-      VALUES (${id}, ${data.team_id}, ${data.name}, ${data.is_default}, ${JSON.stringify(data.stages)}, ${now})
-      RETURNING *
-    `;
-    return { ...result[0], stages: JSON.parse(result[0].stages) } as Pipeline;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query(
+      'INSERT INTO pipelines (id, team_id, name, is_default, stages, created_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [id, data.team_id, data.name, data.is_default, JSON.stringify(data.stages), now]
+    );
+    return { ...result.rows[0], stages: JSON.parse(result.rows[0].stages) } as Pipeline;
   } else {
     const db = getSqliteDb();
     db.prepare(`
@@ -754,9 +764,9 @@ export async function createPipeline(data: Omit<Pipeline, 'id' | 'created_at'>):
 }
 
 export async function getPipelinesByTeam(teamId: string): Promise<Pipeline[]> {
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`SELECT * FROM pipelines WHERE team_id = ${teamId} ORDER BY is_default DESC, name ASC`;
-    return result.map(p => ({ ...p, stages: JSON.parse(p.stages as string) })) as Pipeline[];
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query('SELECT * FROM pipelines WHERE team_id = $1 ORDER BY is_default DESC, name ASC', [teamId]);
+    return result.rows.map((p: any) => ({ ...p, stages: JSON.parse(p.stages as string) })) as Pipeline[];
   } else {
     const db = getSqliteDb();
     const result = db.prepare('SELECT * FROM pipelines WHERE team_id = ? ORDER BY is_default DESC, name ASC').all(teamId) as any[];
@@ -765,10 +775,10 @@ export async function getPipelinesByTeam(teamId: string): Promise<Pipeline[]> {
 }
 
 export async function getDefaultPipeline(teamId: string): Promise<Pipeline | null> {
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`SELECT * FROM pipelines WHERE team_id = ${teamId} AND is_default = true LIMIT 1`;
-    if (result.length === 0) return null;
-    return { ...result[0], stages: JSON.parse(result[0].stages as string) } as Pipeline;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query('SELECT * FROM pipelines WHERE team_id = $1 AND is_default = true LIMIT 1', [teamId]);
+    if (result.rows.length === 0) return null;
+    return { ...result.rows[0], stages: JSON.parse(result.rows[0].stages as string) } as Pipeline;
   } else {
     const db = getSqliteDb();
     const result = db.prepare('SELECT * FROM pipelines WHERE team_id = ? AND is_default = 1 LIMIT 1').get(teamId) as any;
@@ -785,13 +795,12 @@ export async function createBooking(data: Omit<Booking, 'id' | 'created_at'>): P
   const id = uuidv4();
   const now = new Date();
 
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`
-      INSERT INTO bookings (id, team_id, contact_id, lead_id, calendar_event_id, title, start_time, end_time, attendee_email, attendee_name, status, notes, created_at)
-      VALUES (${id}, ${data.team_id}, ${data.contact_id}, ${data.lead_id}, ${data.calendar_event_id}, ${data.title}, ${data.start_time}, ${data.end_time}, ${data.attendee_email}, ${data.attendee_name}, ${data.status}, ${data.notes}, ${now})
-      RETURNING *
-    `;
-    return result[0] as Booking;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query(
+      'INSERT INTO bookings (id, team_id, contact_id, lead_id, calendar_event_id, title, start_time, end_time, attendee_email, attendee_name, status, notes, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *',
+      [id, data.team_id, data.contact_id, data.lead_id, data.calendar_event_id, data.title, data.start_time, data.end_time, data.attendee_email, data.attendee_name, data.status, data.notes, now]
+    );
+    return result.rows[0] as Booking;
   } else {
     const db = getSqliteDb();
     db.prepare(`
@@ -804,8 +813,9 @@ export async function createBooking(data: Omit<Booking, 'id' | 'created_at'>): P
 }
 
 export async function getBookingsByTeam(teamId: string, limit = 100): Promise<Booking[]> {
-  if (IS_PRODUCTION && sql) {
-    return await sql`SELECT * FROM bookings WHERE team_id = ${teamId} ORDER BY start_time DESC LIMIT ${limit}` as Booking[];
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query('SELECT * FROM bookings WHERE team_id = $1 ORDER BY start_time DESC LIMIT $2', [teamId, limit]);
+    return result.rows as Booking[];
   } else {
     const db = getSqliteDb();
     return db.prepare('SELECT * FROM bookings WHERE team_id = ? ORDER BY start_time DESC LIMIT ?').all(teamId, limit) as Booking[];
@@ -814,8 +824,9 @@ export async function getBookingsByTeam(teamId: string, limit = 100): Promise<Bo
 
 export async function getUpcomingBookings(teamId: string): Promise<Booking[]> {
   const now = new Date();
-  if (IS_PRODUCTION && sql) {
-    return await sql`SELECT * FROM bookings WHERE team_id = ${teamId} AND start_time >= ${now} AND status = 'scheduled' ORDER BY start_time ASC` as Booking[];
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query("SELECT * FROM bookings WHERE team_id = $1 AND start_time >= $2 AND status = 'scheduled' ORDER BY start_time ASC", [teamId, now]);
+    return result.rows as Booking[];
   } else {
     const db = getSqliteDb();
     return db.prepare("SELECT * FROM bookings WHERE team_id = ? AND start_time >= ? AND status = 'scheduled' ORDER BY start_time ASC").all(teamId, now.toISOString()) as Booking[];
@@ -830,13 +841,12 @@ export async function createAutomationTemplate(data: Omit<AutomationTemplate, 'i
   const id = uuidv4();
   const now = new Date();
 
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`
-      INSERT INTO automation_templates (id, team_id, name, type, subject, body, created_at)
-      VALUES (${id}, ${data.team_id}, ${data.name}, ${data.type}, ${data.subject}, ${data.body}, ${now})
-      RETURNING *
-    `;
-    return result[0] as AutomationTemplate;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query(
+      'INSERT INTO automation_templates (id, team_id, name, type, subject, body, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [id, data.team_id, data.name, data.type, data.subject, data.body, now]
+    );
+    return result.rows[0] as AutomationTemplate;
   } else {
     const db = getSqliteDb();
     db.prepare(`
@@ -849,8 +859,9 @@ export async function createAutomationTemplate(data: Omit<AutomationTemplate, 'i
 }
 
 export async function getAutomationTemplatesByTeam(teamId: string): Promise<AutomationTemplate[]> {
-  if (IS_PRODUCTION && sql) {
-    return await sql`SELECT * FROM automation_templates WHERE team_id = ${teamId} ORDER BY name ASC` as AutomationTemplate[];
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query('SELECT * FROM automation_templates WHERE team_id = $1 ORDER BY name ASC', [teamId]);
+    return result.rows as AutomationTemplate[];
   } else {
     const db = getSqliteDb();
     return db.prepare('SELECT * FROM automation_templates WHERE team_id = ? ORDER BY name ASC').all(teamId) as AutomationTemplate[];
@@ -865,13 +876,12 @@ export async function createAutomationLog(data: Omit<AutomationLog, 'id' | 'crea
   const id = uuidv4();
   const now = new Date();
 
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`
-      INSERT INTO automation_logs (id, rule_id, lead_id, contact_id, action_type, status, result, scheduled_for, executed_at, created_at)
-      VALUES (${id}, ${data.rule_id}, ${data.lead_id}, ${data.contact_id}, ${data.action_type}, ${data.status}, ${JSON.stringify(data.result || {})}, ${data.scheduled_for}, ${data.executed_at}, ${now})
-      RETURNING *
-    `;
-    return result[0] as AutomationLog;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query(
+      'INSERT INTO automation_logs (id, rule_id, lead_id, contact_id, action_type, status, result, scheduled_for, executed_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [id, data.rule_id, data.lead_id, data.contact_id, data.action_type, data.status, JSON.stringify(data.result || {}), data.scheduled_for, data.executed_at, now]
+    );
+    return result.rows[0] as AutomationLog;
   } else {
     const db = getSqliteDb();
     db.prepare(`
@@ -885,8 +895,9 @@ export async function createAutomationLog(data: Omit<AutomationLog, 'id' | 'crea
 
 export async function getPendingAutomationLogs(): Promise<AutomationLog[]> {
   const now = new Date();
-  if (IS_PRODUCTION && sql) {
-    return await sql`SELECT * FROM automation_logs WHERE status = 'pending' AND scheduled_for <= ${now} ORDER BY scheduled_for ASC` as AutomationLog[];
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query("SELECT * FROM automation_logs WHERE status = 'pending' AND scheduled_for <= $1 ORDER BY scheduled_for ASC", [now]);
+    return result.rows as AutomationLog[];
   } else {
     const db = getSqliteDb();
     return db.prepare("SELECT * FROM automation_logs WHERE status = 'pending' AND scheduled_for <= ? ORDER BY scheduled_for ASC").all(now.toISOString()) as AutomationLog[];
@@ -895,8 +906,8 @@ export async function getPendingAutomationLogs(): Promise<AutomationLog[]> {
 
 export async function updateAutomationLogStatus(id: string, status: string, result?: Record<string, any>): Promise<void> {
   const now = new Date();
-  if (IS_PRODUCTION && sql) {
-    await sql`UPDATE automation_logs SET status = ${status}, result = ${JSON.stringify(result || {})}, executed_at = ${now} WHERE id = ${id}`;
+  if (IS_PRODUCTION && pgPool) {
+    await pgPool.query('UPDATE automation_logs SET status = $1, result = $2, executed_at = $3 WHERE id = $4', [status, JSON.stringify(result || {}), now, id]);
   } else {
     const db = getSqliteDb();
     db.prepare('UPDATE automation_logs SET status = ?, result = ?, executed_at = ? WHERE id = ?').run(status, JSON.stringify(result || {}), now.toISOString(), id);

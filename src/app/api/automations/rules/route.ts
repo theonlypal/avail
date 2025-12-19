@@ -6,12 +6,22 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import { getAutomationDb, type AutomationRule, type TriggerType } from '@/lib/db-automation';
 import { v4 as uuidv4 } from 'uuid';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 const VALID_TRIGGER_TYPES: TriggerType[] = [
   'lead_created',
@@ -41,21 +51,26 @@ export async function GET(request: NextRequest) {
     const isActive = searchParams.get('is_active');
     const triggerType = searchParams.get('trigger_type');
 
-    if (IS_PRODUCTION && sql) {
-      let query = `SELECT * FROM automation_rules WHERE team_id = '${teamId}'`;
+    if (IS_PRODUCTION && pgPool) {
+      let query = 'SELECT * FROM automation_rules WHERE team_id = $1';
+      const params: any[] = [teamId];
+      let paramIndex = 2;
 
       if (isActive !== null) {
-        query += ` AND is_active = ${isActive === 'true'}`;
+        query += ` AND is_active = $${paramIndex}`;
+        params.push(isActive === 'true');
+        paramIndex++;
       }
       if (triggerType) {
-        query += ` AND trigger_type = '${triggerType}'`;
+        query += ` AND trigger_type = $${paramIndex}`;
+        params.push(triggerType);
+        paramIndex++;
       }
 
       query += ` ORDER BY created_at DESC`;
 
-      const result = await sql.unsafe(query);
-      const rules = Array.isArray(result) ? result : [];
-      return NextResponse.json({ rules });
+      const result = await pgPool.query(query, params);
+      return NextResponse.json({ rules: result.rows });
     } else {
       const db = getAutomationDb();
 
@@ -127,23 +142,24 @@ export async function POST(request: NextRequest) {
     const id = uuidv4();
     const now = new Date();
 
-    if (IS_PRODUCTION && sql) {
-      const result = await sql`
-        INSERT INTO automation_rules (
+    if (IS_PRODUCTION && pgPool) {
+      const result = await pgPool.query(
+        `INSERT INTO automation_rules (
           id, team_id, name, description, trigger_type, trigger_config,
           actions, is_active, created_at, updated_at
         )
-        VALUES (
-          ${id}, ${body.team_id}, ${body.name}, ${body.description || null},
-          ${body.trigger_type}, ${JSON.stringify(body.trigger_config || {})},
-          ${JSON.stringify(body.actions)}, ${body.is_active !== false},
-          ${now}, ${now}
-        )
-        RETURNING *
-      `;
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING *`,
+        [
+          id, body.team_id, body.name, body.description || null,
+          body.trigger_type, JSON.stringify(body.trigger_config || {}),
+          JSON.stringify(body.actions), body.is_active !== false,
+          now, now
+        ]
+      );
 
       console.log('✅ Automation rule created:', id);
-      return NextResponse.json({ success: true, rule: result[0] });
+      return NextResponse.json({ success: true, rule: result.rows[0] });
 
     } else {
       const db = getAutomationDb();

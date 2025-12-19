@@ -6,7 +6,7 @@
  * and receive personalized demo experiences.
  */
 
-import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -24,10 +24,17 @@ if (!IS_PRODUCTION) {
   }
 }
 
-// Neon SQL client for production
-const sql: NeonQueryFunction<false, false> | null = IS_PRODUCTION && process.env.POSTGRES_URL
-  ? neon(process.env.POSTGRES_URL)
-  : null;
+// PostgreSQL Pool for production (Railway)
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 10,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // SQLite setup (local development)
 const DB_PATH = path.join(process.cwd(), 'data', 'leadly.db');
@@ -163,28 +170,29 @@ export async function createProspect(data: Omit<Prospect, 'id' | 'created_at' | 
   // Demo link expires in 30 days
   const demo_expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`
-      INSERT INTO prospects (
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query(
+      `INSERT INTO prospects (
         id, company_name, contact_name, contact_email, contact_phone,
         industry, business_type, location, team_id,
         services, pain_points, current_tools, monthly_leads, avg_deal_value,
         website_url, google_business_url, social_handles,
         demo_preferences, demo_token, demo_expires_at,
         status, source, notes, created_at, updated_at
-      ) VALUES (
-        ${id}, ${data.company_name}, ${data.contact_name}, ${data.contact_email}, ${data.contact_phone || null},
-        ${data.industry}, ${data.business_type}, ${data.location || null}, ${data.team_id || null},
-        ${JSON.stringify(data.services || [])}, ${JSON.stringify(data.pain_points || [])},
-        ${JSON.stringify(data.current_tools || [])}, ${data.monthly_leads || null}, ${data.avg_deal_value || null},
-        ${data.website_url || null}, ${data.google_business_url || null},
-        ${JSON.stringify(data.social_handles || {})},
-        ${JSON.stringify(data.demo_preferences || {})}, ${demo_token}, ${demo_expires_at},
-        ${data.status || 'new'}, ${data.source || null}, ${data.notes || null},
-        ${now}, ${now}
-      ) RETURNING *
-    `;
-    return parseProspect(result[0]);
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25) RETURNING *`,
+      [
+        id, data.company_name, data.contact_name, data.contact_email, data.contact_phone || null,
+        data.industry, data.business_type, data.location || null, data.team_id || null,
+        JSON.stringify(data.services || []), JSON.stringify(data.pain_points || []),
+        JSON.stringify(data.current_tools || []), data.monthly_leads || null, data.avg_deal_value || null,
+        data.website_url || null, data.google_business_url || null,
+        JSON.stringify(data.social_handles || {}),
+        JSON.stringify(data.demo_preferences || {}), demo_token, demo_expires_at,
+        data.status || 'new', data.source || null, data.notes || null,
+        now, now
+      ]
+    );
+    return parseProspect(result.rows[0]);
   }
 
   const db = getSqliteDb();
@@ -218,9 +226,9 @@ export async function createProspect(data: Omit<Prospect, 'id' | 'created_at' | 
  * Get prospect by ID
  */
 export async function getProspectById(id: string): Promise<Prospect | null> {
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`SELECT * FROM prospects WHERE id = ${id}`;
-    return result.length > 0 ? parseProspect(result[0]) : null;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query('SELECT * FROM prospects WHERE id = $1', [id]);
+    return result.rows.length > 0 ? parseProspect(result.rows[0]) : null;
   }
 
   const db = getSqliteDb();
@@ -232,13 +240,12 @@ export async function getProspectById(id: string): Promise<Prospect | null> {
  * Get prospect by demo token
  */
 export async function getProspectByDemoToken(token: string): Promise<Prospect | null> {
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`
-      SELECT * FROM prospects
-      WHERE demo_token = ${token}
-      AND (demo_expires_at IS NULL OR demo_expires_at > NOW())
-    `;
-    return result.length > 0 ? parseProspect(result[0]) : null;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query(
+      'SELECT * FROM prospects WHERE demo_token = $1 AND (demo_expires_at IS NULL OR demo_expires_at > NOW())',
+      [token]
+    );
+    return result.rows.length > 0 ? parseProspect(result.rows[0]) : null;
   }
 
   const db = getSqliteDb();
@@ -254,9 +261,9 @@ export async function getProspectByDemoToken(token: string): Promise<Prospect | 
  * Get prospect by email
  */
 export async function getProspectByEmail(email: string): Promise<Prospect | null> {
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`SELECT * FROM prospects WHERE contact_email = ${email}`;
-    return result.length > 0 ? parseProspect(result[0]) : null;
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query('SELECT * FROM prospects WHERE contact_email = $1', [email]);
+    return result.rows.length > 0 ? parseProspect(result.rows[0]) : null;
   }
 
   const db = getSqliteDb();
@@ -274,23 +281,20 @@ export async function listProspects(options?: {
 }): Promise<Prospect[]> {
   const { status, limit = 50, offset = 0 } = options || {};
 
-  if (IS_PRODUCTION && sql) {
-    let query;
+  if (IS_PRODUCTION && pgPool) {
+    let result;
     if (status) {
-      query = await sql`
-        SELECT * FROM prospects
-        WHERE status = ${status}
-        ORDER BY created_at DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `;
+      result = await pgPool.query(
+        'SELECT * FROM prospects WHERE status = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+        [status, limit, offset]
+      );
     } else {
-      query = await sql`
-        SELECT * FROM prospects
-        ORDER BY created_at DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `;
+      result = await pgPool.query(
+        'SELECT * FROM prospects ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+        [limit, offset]
+      );
     }
-    return query.map(parseProspect);
+    return result.rows.map(parseProspect);
   }
 
   const db = getSqliteDb();
@@ -344,11 +348,12 @@ export async function updateProspect(id: string, data: Partial<Prospect>): Promi
 
   values.push(id);
 
-  if (IS_PRODUCTION && sql) {
-    // For production, build and execute raw query
-    const query = `UPDATE prospects SET ${updates.join(', ')} WHERE id = $1`;
-    const params = [...values.slice(0, -1), id]; // Reorder params for postgres
-    await sql.apply(null, [[query], ...params] as unknown as Parameters<typeof sql>);
+  if (IS_PRODUCTION && pgPool) {
+    // For production, build parameterized query with correct indices
+    const paramValues = values.slice(0, -1); // Remove the last id (we'll add it properly)
+    const paramIndex = paramValues.length + 1;
+    const query = `UPDATE prospects SET ${updates.map((u, i) => u.replace('?', `$${i + 1}`)).join(', ')} WHERE id = $${paramIndex}`;
+    await pgPool.query(query, [...paramValues, id]);
     return getProspectById(id);
   }
 
@@ -363,8 +368,8 @@ export async function updateProspect(id: string, data: Partial<Prospect>): Promi
  * Delete prospect
  */
 export async function deleteProspect(id: string): Promise<boolean> {
-  if (IS_PRODUCTION && sql) {
-    await sql`DELETE FROM prospects WHERE id = ${id}`;
+  if (IS_PRODUCTION && pgPool) {
+    await pgPool.query('DELETE FROM prospects WHERE id = $1', [id]);
     return true;
   }
 

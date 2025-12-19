@@ -1,18 +1,28 @@
 /**
  * Deals API Route - PRODUCTION READY
  *
- * Real CRUD operations for deals with Neon Postgres
+ * Real CRUD operations for deals with PostgreSQL
  * GET: List all deals (with optional filtering)
  * POST: Create new deal
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createDeal, getDealsByContact } from '@/lib/db-crm';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -48,10 +58,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all deals with optional stage filter - JOIN with contacts table
-    if (IS_PRODUCTION && sql) {
-      let query;
+    if (IS_PRODUCTION && pgPool) {
+      let result;
       if (stage) {
-        query = sql`
+        result = await pgPool.query(`
           SELECT
             d.*,
             jsonb_build_object(
@@ -61,12 +71,12 @@ export async function GET(request: NextRequest) {
             ) as contact
           FROM deals d
           LEFT JOIN contacts c ON d.contact_id = c.id
-          WHERE d.stage = ${stage}
+          WHERE d.stage = $1
           ORDER BY d.created_at DESC
-          LIMIT ${limit} OFFSET ${offset}
-        `;
+          LIMIT $2 OFFSET $3
+        `, [stage, limit, offset]);
       } else {
-        query = sql`
+        result = await pgPool.query(`
           SELECT
             d.*,
             jsonb_build_object(
@@ -77,11 +87,10 @@ export async function GET(request: NextRequest) {
           FROM deals d
           LEFT JOIN contacts c ON d.contact_id = c.id
           ORDER BY d.created_at DESC
-          LIMIT ${limit} OFFSET ${offset}
-        `;
+          LIMIT $1 OFFSET $2
+        `, [limit, offset]);
       }
-      const deals = await query;
-      return NextResponse.json({ deals });
+      return NextResponse.json({ deals: result.rows });
     } else {
       // SQLite with JOIN
       const db = getSqliteDb();

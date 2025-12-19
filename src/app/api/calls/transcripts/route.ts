@@ -6,13 +6,21 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
 const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
 
 // Initialize database connection
-const sql = IS_PRODUCTION && postgresUrl ? neon(postgresUrl) : null;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 interface TranscriptLine {
   call_sid: string;
@@ -35,7 +43,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    if (!sql) {
+    if (!pgPool) {
       return NextResponse.json({
         success: true,
         transcripts: [],
@@ -44,31 +52,33 @@ export async function GET(request: NextRequest) {
     }
 
     // Query database for transcripts
-    let transcripts;
+    let result;
     if (lastId) {
       // Extract timestamp from composite ID (format: callsid_timestamp)
       const timestampStr = lastId.includes('_') ? lastId.split('_').pop() : lastId;
       const lastTimestamp = timestampStr ? parseInt(timestampStr, 10) : 0;
 
-      transcripts = await sql`
-        SELECT call_sid, speaker, text, timestamp, confidence
-        FROM live_transcripts
-        WHERE call_sid = ${callSid}
-        AND timestamp > ${lastTimestamp}
-        ORDER BY timestamp ASC
-      `;
+      result = await pgPool.query(
+        `SELECT call_sid, speaker, text, timestamp, confidence
+         FROM live_transcripts
+         WHERE call_sid = $1
+         AND timestamp > $2
+         ORDER BY timestamp ASC`,
+        [callSid, lastTimestamp]
+      );
     } else {
       // Get all transcripts for this call
-      transcripts = await sql`
-        SELECT call_sid, speaker, text, timestamp, confidence
-        FROM live_transcripts
-        WHERE call_sid = ${callSid}
-        ORDER BY timestamp ASC
-      `;
+      result = await pgPool.query(
+        `SELECT call_sid, speaker, text, timestamp, confidence
+         FROM live_transcripts
+         WHERE call_sid = $1
+         ORDER BY timestamp ASC`,
+        [callSid]
+      );
     }
 
     // Map speaker labels to match frontend expectations
-    const formattedTranscripts = transcripts.map((t: any) => ({
+    const formattedTranscripts = result.rows.map((t: any) => ({
       id: `${t.call_sid}_${t.timestamp}`, // Create composite ID from primary key
       speaker: t.speaker === 'Agent' ? 'user' : 'lead',
       text: t.text,
@@ -108,12 +118,12 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    if (sql) {
+    if (pgPool) {
       // Delete transcripts from database
-      await sql`
-        DELETE FROM live_transcripts
-        WHERE call_sid = ${callSid}
-      `;
+      await pgPool.query(
+        'DELETE FROM live_transcripts WHERE call_sid = $1',
+        [callSid]
+      );
     }
 
     return NextResponse.json({

@@ -7,11 +7,21 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -46,15 +56,15 @@ export async function GET(
   try {
     const { id } = await params;
 
-    if (IS_PRODUCTION && sql) {
-      const tags = await sql`
+    if (IS_PRODUCTION && pgPool) {
+      const result = await pgPool.query(`
         SELECT t.*
         FROM tags t
         INNER JOIN contact_tags ct ON t.id = ct.tag_id
-        WHERE ct.contact_id = ${id}
+        WHERE ct.contact_id = $1
         ORDER BY t.name ASC
-      `;
-      return NextResponse.json({ tags });
+      `, [id]);
+      return NextResponse.json({ tags: result.rows });
     } else {
       const db = getSqliteDb();
       const tags = db.prepare(`
@@ -95,17 +105,17 @@ export async function POST(
       );
     }
 
-    if (IS_PRODUCTION && sql) {
+    if (IS_PRODUCTION && pgPool) {
       // Check if already assigned
-      const existing = await sql`SELECT * FROM contact_tags WHERE contact_id = ${id} AND tag_id = ${body.tag_id}`;
-      if (existing.length > 0) {
+      const existing = await pgPool.query('SELECT * FROM contact_tags WHERE contact_id = $1 AND tag_id = $2', [id, body.tag_id]);
+      if (existing.rows.length > 0) {
         return NextResponse.json(
           { error: 'Tag already assigned to contact' },
           { status: 409 }
         );
       }
 
-      await sql`INSERT INTO contact_tags (contact_id, tag_id) VALUES (${id}, ${body.tag_id})`;
+      await pgPool.query('INSERT INTO contact_tags (contact_id, tag_id) VALUES ($1, $2)', [id, body.tag_id]);
 
       console.log('✅ Tag added to contact:', id, body.tag_id);
       return NextResponse.json({ success: true });
@@ -157,8 +167,8 @@ export async function DELETE(
       );
     }
 
-    if (IS_PRODUCTION && sql) {
-      await sql`DELETE FROM contact_tags WHERE contact_id = ${id} AND tag_id = ${tagId}`;
+    if (IS_PRODUCTION && pgPool) {
+      await pgPool.query('DELETE FROM contact_tags WHERE contact_id = $1 AND tag_id = $2', [id, tagId]);
 
       console.log('✅ Tag removed from contact:', id, tagId);
       return NextResponse.json({ success: true });

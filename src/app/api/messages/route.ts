@@ -6,11 +6,20 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 const DB_PATH = path.join(process.cwd(), 'data', 'leadly.db');
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,29 +40,32 @@ export async function GET(request: NextRequest) {
     const direction = searchParams.get('direction'); // 'inbound' or 'outbound'
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    if (IS_PRODUCTION && sql) {
-      let query = sql`SELECT * FROM messages WHERE 1=1`;
+    if (IS_PRODUCTION && pgPool) {
+      let query = 'SELECT * FROM messages WHERE 1=1';
+      const params: any[] = [];
+      let paramIndex = 1;
 
       if (contactId) {
-        query = sql`SELECT * FROM messages WHERE contact_id = ${contactId}`;
+        query += ` AND contact_id = $${paramIndex++}`;
+        params.push(contactId);
       }
       if (channel) {
-        query = sql`SELECT * FROM messages WHERE channel = ${channel}`;
+        query += ` AND channel = $${paramIndex++}`;
+        params.push(channel);
       }
       if (direction) {
-        query = sql`SELECT * FROM messages WHERE direction = ${direction}`;
+        query += ` AND direction = $${paramIndex++}`;
+        params.push(direction);
       }
 
-      const messages = await sql`
-        SELECT * FROM messages
-        ${contactId ? sql`WHERE contact_id = ${contactId}` : sql``}
-        ORDER BY sent_at DESC
-        LIMIT ${limit}
-      `;
+      query += ` ORDER BY sent_at DESC LIMIT $${paramIndex}`;
+      params.push(limit);
+
+      const result = await pgPool.query(query, params);
 
       return NextResponse.json({
         success: true,
-        messages,
+        messages: result.rows,
       });
     } else {
       // SQLite query
@@ -109,17 +121,18 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const sentAt = data.sent_at ? new Date(data.sent_at) : now;
 
-    if (IS_PRODUCTION && sql) {
+    if (IS_PRODUCTION && pgPool) {
       const metadataJson = data.metadata ? JSON.stringify(data.metadata) : null;
-      const result = await sql`
-        INSERT INTO messages (id, contact_id, direction, channel, from_number, to_number, body, status, twilio_sid, postmark_message_id, metadata, sent_at, created_at)
-        VALUES (${id}, ${data.contact_id}, ${data.direction}, ${data.channel}, ${data.from_number}, ${data.to_number}, ${data.body}, ${data.status || 'sent'}, ${data.twilio_sid}, ${data.postmark_message_id}, ${metadataJson}, ${sentAt}, ${now})
-        RETURNING *
-      `;
+      const result = await pgPool.query(
+        `INSERT INTO messages (id, contact_id, direction, channel, from_number, to_number, body, status, twilio_sid, postmark_message_id, metadata, sent_at, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING *`,
+        [id, data.contact_id, data.direction, data.channel, data.from_number, data.to_number, data.body, data.status || 'sent', data.twilio_sid, data.postmark_message_id, metadataJson, sentAt, now]
+      );
 
       return NextResponse.json({
         success: true,
-        message: result[0],
+        message: result.rows[0],
       });
     } else {
       const db = getSqliteDb();

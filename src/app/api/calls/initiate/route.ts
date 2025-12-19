@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
 const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
-const sql = IS_PRODUCTION && postgresUrl ? neon(postgresUrl) : null;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -96,12 +104,13 @@ export async function POST(request: NextRequest) {
         const callId = uuidv4();
         const now = new Date().toISOString();
 
-        if (IS_PRODUCTION && sql) {
+        if (IS_PRODUCTION && pgPool) {
           // Try to insert into Postgres (might fail if table doesn't exist)
-          await sql`
-            INSERT INTO call_logs (id, lead_id, call_sid, status, direction, started_at, created_at)
-            VALUES (${callId}, ${lead_id}, ${call.sid}, ${'initiated'}, ${'outbound'}, ${now}, ${now})
-          `.catch(() => {
+          await pgPool.query(
+            `INSERT INTO call_logs (id, lead_id, call_sid, status, direction, started_at, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [callId, lead_id, call.sid, 'initiated', 'outbound', now, now]
+          ).catch(() => {
             console.log('[DB] call_logs table does not exist yet, skipping log');
           });
         } else {

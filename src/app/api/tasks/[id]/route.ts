@@ -7,11 +7,21 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -25,8 +35,8 @@ function getSqliteDb(): any {
 }
 
 async function getTaskById(id: string) {
-  if (IS_PRODUCTION && sql) {
-    const result = await sql`
+  if (IS_PRODUCTION && pgPool) {
+    const result = await pgPool.query(`
       SELECT
         t.*,
         jsonb_build_object(
@@ -36,9 +46,9 @@ async function getTaskById(id: string) {
         ) as assignee
       FROM tasks t
       LEFT JOIN team_members tm ON t.assignee_id = tm.id
-      WHERE t.id = ${id}
-    `;
-    return result[0] || null;
+      WHERE t.id = $1
+    `, [id]);
+    return result.rows[0] || null;
   } else {
     const db = getSqliteDb();
     const task = db.prepare(`
@@ -171,24 +181,24 @@ export async function PUT(
 
     updates.updated_at = now;
 
-    if (IS_PRODUCTION && sql) {
-      // Postgres update - Build SET clause
-      const setClause = Object.keys(updates)
-        .map(key => {
-          const value = updates[key];
-          if (value === null) return `${key} = NULL`;
-          if (value instanceof Date) return `${key} = '${value.toISOString()}'`;
-          if (Array.isArray(value)) return `${key} = '${JSON.stringify(value)}'`;
-          if (typeof value === 'string') return `${key} = '${value.replace(/'/g, "''")}'`;
-          return `${key} = '${value}'`;
-        })
-        .join(', ');
+    if (IS_PRODUCTION && pgPool) {
+      // Postgres update - Build SET clause with parameterized values
+      const keys = Object.keys(updates);
+      const values = keys.map(key => {
+        const value = updates[key];
+        if (value instanceof Date) return value.toISOString();
+        if (Array.isArray(value)) return JSON.stringify(value);
+        return value;
+      });
+      values.push(id);
 
-      const result = await sql.unsafe(
-        `UPDATE tasks SET ${setClause} WHERE id = '${id}' RETURNING *`
-      ) as unknown as any[];
+      const setClause = keys.map((key, idx) => `${key} = $${idx + 1}`).join(', ');
+      const result = await pgPool.query(
+        `UPDATE tasks SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`,
+        values
+      );
 
-      if (!result || result.length === 0) {
+      if (result.rows.length === 0) {
         return NextResponse.json(
           { error: 'Task not found' },
           { status: 404 }
@@ -196,7 +206,7 @@ export async function PUT(
       }
 
       console.log('✅ Task updated via API:', id, updates.status ? `→ ${updates.status}` : '');
-      return NextResponse.json({ success: true, task: result[0] });
+      return NextResponse.json({ success: true, task: result.rows[0] });
 
     } else {
       // SQLite
@@ -244,10 +254,10 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    if (IS_PRODUCTION && sql) {
-      const result = await sql`DELETE FROM tasks WHERE id = ${id} RETURNING id`;
+    if (IS_PRODUCTION && pgPool) {
+      const result = await pgPool.query('DELETE FROM tasks WHERE id = $1 RETURNING id', [id]);
 
-      if (result.length === 0) {
+      if (result.rows.length === 0) {
         return NextResponse.json(
           { error: 'Task not found' },
           { status: 404 }

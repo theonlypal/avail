@@ -6,12 +6,22 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Database: any = null;
@@ -73,28 +83,54 @@ export async function GET(request: NextRequest) {
     const assignedTo = searchParams.get('assigned_to');
     const limit = parseInt(searchParams.get('limit') || '100');
 
-    if (IS_PRODUCTION && sql) {
-      // Build dynamic query for Postgres
-      let query = `
+    if (IS_PRODUCTION && pgPool) {
+      // Build parameterized query for Postgres
+      const conditions: string[] = ['a.team_id = $1'];
+      const params: any[] = [teamId];
+      let paramIndex = 2;
+
+      if (contactId) {
+        conditions.push(`a.contact_id = $${paramIndex}`);
+        params.push(contactId);
+        paramIndex++;
+      }
+      if (dealId) {
+        conditions.push(`a.deal_id = $${paramIndex}`);
+        params.push(dealId);
+        paramIndex++;
+      }
+      if (status) {
+        conditions.push(`a.status = $${paramIndex}`);
+        params.push(status);
+        paramIndex++;
+      }
+      if (type) {
+        conditions.push(`a.type = $${paramIndex}`);
+        params.push(type);
+        paramIndex++;
+      }
+      if (assignedTo) {
+        conditions.push(`a.assigned_to = $${paramIndex}`);
+        params.push(assignedTo);
+        paramIndex++;
+      }
+
+      params.push(limit);
+
+      const query = `
         SELECT a.*,
           c.first_name as contact_first_name,
           c.last_name as contact_last_name,
           c.email as contact_email
         FROM activities a
         LEFT JOIN contacts c ON a.contact_id = c.id
-        WHERE a.team_id = '${teamId}'
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY CASE WHEN a.status = 'pending' THEN 0 WHEN a.status = 'in_progress' THEN 1 ELSE 2 END, a.due_date ASC NULLS LAST, a.created_at DESC
+        LIMIT $${paramIndex}
       `;
 
-      if (contactId) query += ` AND a.contact_id = '${contactId}'`;
-      if (dealId) query += ` AND a.deal_id = '${dealId}'`;
-      if (status) query += ` AND a.status = '${status}'`;
-      if (type) query += ` AND a.type = '${type}'`;
-      if (assignedTo) query += ` AND a.assigned_to = '${assignedTo}'`;
-
-      query += ` ORDER BY CASE WHEN a.status = 'pending' THEN 0 WHEN a.status = 'in_progress' THEN 1 ELSE 2 END, a.due_date ASC NULLS LAST, a.created_at DESC LIMIT ${limit}`;
-
-      const activities = await sql.unsafe(query);
-      return NextResponse.json({ activities });
+      const result = await pgPool.query(query, params);
+      return NextResponse.json({ activities: result.rows });
     } else {
       const db = getSqliteDb();
 
@@ -184,23 +220,23 @@ export async function POST(request: NextRequest) {
     const id = uuidv4();
     const now = new Date();
 
-    if (IS_PRODUCTION && sql) {
-      const result = await sql`
+    if (IS_PRODUCTION && pgPool) {
+      const result = await pgPool.query(`
         INSERT INTO activities (
           id, team_id, type, title, description, contact_id, deal_id, lead_id,
           assigned_to, due_date, priority, status, metadata, created_by, created_at, updated_at
         )
-        VALUES (
-          ${id}, ${body.team_id}, ${body.type}, ${body.title}, ${body.description || null},
-          ${body.contact_id || null}, ${body.deal_id || null}, ${body.lead_id || null},
-          ${body.assigned_to || null}, ${body.due_date || null}, ${body.priority || 'medium'},
-          'pending', ${JSON.stringify(body.metadata || {})}, ${body.created_by || null}, ${now}, ${now}
-        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', $12, $13, $14, $15)
         RETURNING *
-      `;
+      `, [
+        id, body.team_id, body.type, body.title, body.description || null,
+        body.contact_id || null, body.deal_id || null, body.lead_id || null,
+        body.assigned_to || null, body.due_date || null, body.priority || 'medium',
+        JSON.stringify(body.metadata || {}), body.created_by || null, now, now
+      ]);
 
       console.log('✅ Activity created via API:', id);
-      return NextResponse.json({ success: true, activity: result[0] });
+      return NextResponse.json({ success: true, activity: result.rows[0] });
 
     } else {
       const db = getSqliteDb();

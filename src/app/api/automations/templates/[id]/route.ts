@@ -7,11 +7,21 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import { getAutomationDb } from '@/lib/db-automation';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const sql = IS_PRODUCTION && process.env.POSTGRES_URL ? neon(process.env.POSTGRES_URL) : null;
+
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 /**
  * GET /api/automations/templates/[id]
@@ -26,11 +36,12 @@ export async function GET(
 
     let template: any = null;
 
-    if (IS_PRODUCTION && sql) {
-      const result = await sql`
-        SELECT * FROM automation_templates WHERE id = ${id}
-      `;
-      template = result?.[0];
+    if (IS_PRODUCTION && pgPool) {
+      const result = await pgPool.query(
+        'SELECT * FROM automation_templates WHERE id = $1',
+        [id]
+      );
+      template = result.rows[0];
     } else {
       const db = getAutomationDb();
       template = db.prepare('SELECT * FROM automation_templates WHERE id = ?').get(id);
@@ -67,7 +78,7 @@ export async function PUT(
     const body = await request.json();
     const now = new Date();
 
-    if (IS_PRODUCTION && sql) {
+    if (IS_PRODUCTION && pgPool) {
       // Build update dynamically
       const updates: string[] = [];
       const values: any[] = [];
@@ -96,23 +107,25 @@ export async function PUT(
         );
       }
 
-      // Use direct update
-      await sql`
-        UPDATE automation_templates
-        SET name = COALESCE(${body.name}, name),
-            type = COALESCE(${body.type}, type),
-            subject = COALESCE(${body.subject}, subject),
-            body = COALESCE(${body.body}, body),
-            updated_at = ${now}
-        WHERE id = ${id}
-      `;
+      // Use direct update with COALESCE
+      await pgPool.query(
+        `UPDATE automation_templates
+         SET name = COALESCE($1, name),
+             type = COALESCE($2, type),
+             subject = COALESCE($3, subject),
+             body = COALESCE($4, body),
+             updated_at = $5
+         WHERE id = $6`,
+        [body.name, body.type, body.subject, body.body, now, id]
+      );
 
-      const result = await sql`
-        SELECT * FROM automation_templates WHERE id = ${id}
-      `;
+      const result = await pgPool.query(
+        'SELECT * FROM automation_templates WHERE id = $1',
+        [id]
+      );
 
       console.log('✅ Automation template updated:', id);
-      return NextResponse.json({ success: true, template: result?.[0] });
+      return NextResponse.json({ success: true, template: result.rows[0] });
 
     } else {
       const db = getAutomationDb();
@@ -181,8 +194,8 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    if (IS_PRODUCTION && sql) {
-      await sql`DELETE FROM automation_templates WHERE id = ${id}`;
+    if (IS_PRODUCTION && pgPool) {
+      await pgPool.query('DELETE FROM automation_templates WHERE id = $1', [id]);
     } else {
       const db = getAutomationDb();
       db.prepare('DELETE FROM automation_templates WHERE id = ?').run(id);
