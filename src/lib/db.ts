@@ -1,14 +1,14 @@
 /**
- * Database Layer for Leadly.AI
+ * Database Layer for AVAIL
  * - Development: SQLite (better-sqlite3)
- * - Production: Neon Postgres (serverless)
+ * - Production: PostgreSQL (pg driver) - Railway
  */
 
-import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 import fs from 'fs';
 
-const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
+const IS_PRODUCTION = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
 
 // Only import better-sqlite3 in development to avoid native module issues in production
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,13 +21,20 @@ if (!IS_PRODUCTION) {
   }
 }
 
-// Neon provides POSTGRES_URL, also check DATABASE_URL for flexibility
+// Postgres connection URL
 const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
 
-// Neon SQL client for production (serverless PostgreSQL)
-const sql: NeonQueryFunction<false, false> | null = IS_PRODUCTION && postgresUrl
-  ? neon(postgresUrl)
-  : null;
+// PostgreSQL Pool for production (Railway)
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false, // Railway internal connections don't need SSL
+    max: 10,
+    idleTimeoutMillis: 30000,
+  });
+  console.log('[DB] Using pg Pool for Railway Postgres');
+}
 
 // SQLite setup (local development)
 const DB_PATH = path.join(process.cwd(), 'data', 'leadly.db');
@@ -156,35 +163,33 @@ export async function initializePostgresSchema() {
   console.log('POSTGRES_URL exists:', !!process.env.POSTGRES_URL);
   console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
   console.log('postgresUrl value:', postgresUrl ? 'SET' : 'NOT SET');
+  console.log('pgPool:', pgPool ? 'INITIALIZED' : 'NULL');
 
-  if (!sql) {
+  if (!pgPool) {
     throw new Error('Postgres connection not available - missing DATABASE_URL or POSTGRES_URL environment variable');
   }
 
   try {
-    // Teams table
-    await sql`CREATE TABLE IF NOT EXISTS teams (id TEXT PRIMARY KEY, team_name TEXT NOT NULL, subscription_tier TEXT DEFAULT 'starter', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`;
+    const client = await pgPool.connect();
+    try {
+      await client.query(`CREATE TABLE IF NOT EXISTS teams (id TEXT PRIMARY KEY, team_name TEXT NOT NULL, subscription_tier TEXT DEFAULT 'starter', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
+      await client.query(`CREATE TABLE IF NOT EXISTS team_members (id TEXT PRIMARY KEY, team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, role TEXT DEFAULT 'rep', avatar_url TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
+      await client.query(`CREATE TABLE IF NOT EXISTS leads (id TEXT PRIMARY KEY, team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE, business_name TEXT NOT NULL, industry TEXT NOT NULL, location TEXT NOT NULL, phone TEXT, email TEXT, website TEXT, rating REAL DEFAULT 0, review_count INTEGER DEFAULT 0, website_score INTEGER DEFAULT 0, social_presence TEXT, ad_presence INTEGER DEFAULT 0, opportunity_score INTEGER DEFAULT 0, pain_points TEXT, estimated_revenue TEXT, employee_count INTEGER, business_age INTEGER, last_updated TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
+      await client.query(`CREATE TABLE IF NOT EXISTS call_logs (id TEXT PRIMARY KEY, lead_id TEXT NOT NULL REFERENCES leads(id) ON DELETE CASCADE, member_id TEXT NOT NULL REFERENCES team_members(id) ON DELETE CASCADE, call_sid TEXT, status TEXT DEFAULT 'initiated', direction TEXT DEFAULT 'outbound', duration INTEGER DEFAULT 0, recording_url TEXT, started_at TIMESTAMP, ended_at TIMESTAMP, notes TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
 
-    // Team members table
-    await sql`CREATE TABLE IF NOT EXISTS team_members (id TEXT PRIMARY KEY, team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, role TEXT DEFAULT 'rep', avatar_url TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`;
+      // Create default team if needed
+      const result = await client.query('SELECT COUNT(*) as count FROM teams');
+      if (parseInt(result.rows[0].count) === 0) {
+        const teamId = 'default-team-' + Date.now();
+        await client.query('INSERT INTO teams (id, team_name, created_at, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)', [teamId, 'Sales Team']);
+        const memberId = 'default-member-' + Date.now();
+        await client.query('INSERT INTO team_members (id, team_id, name, email, role) VALUES ($1, $2, $3, $4, $5)', [memberId, teamId, 'Admin User', 'admin@leadly.ai', 'owner']);
+      }
 
-    // Leads table
-    await sql`CREATE TABLE IF NOT EXISTS leads (id TEXT PRIMARY KEY, team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE, business_name TEXT NOT NULL, industry TEXT NOT NULL, location TEXT NOT NULL, phone TEXT, email TEXT, website TEXT, rating REAL DEFAULT 0, review_count INTEGER DEFAULT 0, website_score INTEGER DEFAULT 0, social_presence TEXT, ad_presence INTEGER DEFAULT 0, opportunity_score INTEGER DEFAULT 0, pain_points TEXT, estimated_revenue TEXT, employee_count INTEGER, business_age INTEGER, last_updated TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`;
-
-    // Call logs table
-    await sql`CREATE TABLE IF NOT EXISTS call_logs (id TEXT PRIMARY KEY, lead_id TEXT NOT NULL REFERENCES leads(id) ON DELETE CASCADE, member_id TEXT NOT NULL REFERENCES team_members(id) ON DELETE CASCADE, call_sid TEXT, status TEXT DEFAULT 'initiated', direction TEXT DEFAULT 'outbound', duration INTEGER DEFAULT 0, recording_url TEXT, started_at TIMESTAMP, ended_at TIMESTAMP, notes TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`;
-
-    // Create default team and member if they don't exist
-    const rows = await sql`SELECT COUNT(*) as count FROM teams`;
-    if (rows[0].count === '0' || rows[0].count === 0) {
-      const teamId = 'default-team-' + Date.now();
-      await sql`INSERT INTO teams (id, team_name, created_at, updated_at) VALUES (${teamId}, ${'Sales Team'}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`;
-
-      const memberId = 'default-member-' + Date.now();
-      await sql`INSERT INTO team_members (id, team_id, name, email, role) VALUES (${memberId}, ${teamId}, ${'Admin User'}, ${'admin@leadly.ai'}, ${'owner'})`;
+      console.log('✅ Railway Postgres database initialized successfully');
+    } finally {
+      client.release();
     }
-
-    console.log('✅ Neon Postgres database initialized successfully');
   } catch (error) {
     console.error('Error initializing Postgres schema:', error);
     throw error;
@@ -194,22 +199,19 @@ export async function initializePostgresSchema() {
 /**
  * Export unified database interface
  *
- * IMPORTANT: For production (Neon), this interface converts parameterized queries
- * into template literals since Neon uses template tag syntax.
- * For SQLite, it uses traditional prepared statements.
+ * For production (Railway Postgres), uses pg Pool.
+ * For development (SQLite), uses better-sqlite3.
  */
 export const db = {
   isProduction: IS_PRODUCTION,
+  pool: pgPool, // Expose pool for direct access if needed
 
   async query(queryString: string, params: any[] = []): Promise<any[]> {
     if (IS_PRODUCTION) {
-      if (!sql) throw new Error('Postgres connection not available');
-      // Neon uses template literal syntax - build dynamic query
-      // Replace ? or $N placeholders with actual values for template literal
-      const parts = queryString.split(/\?|\$\d+/);
-      const literals = [...parts, ''] as any as TemplateStringsArray;
-      Object.defineProperty(literals, 'raw', { value: parts });
-      return await (sql as any)(literals, ...params);
+      if (!pgPool) throw new Error('Postgres connection not available');
+      // pg uses $1, $2, etc. for parameters
+      const result = await pgPool.query(queryString, params);
+      return result.rows;
     } else {
       // SQLite query
       const sqliteDb = getSqliteDb();
@@ -220,11 +222,8 @@ export const db = {
 
   async run(queryString: string, params: any[] = []): Promise<void> {
     if (IS_PRODUCTION) {
-      if (!sql) throw new Error('Postgres connection not available');
-      const parts = queryString.split(/\?|\$\d+/);
-      const literals = [...parts, ''] as any as TemplateStringsArray;
-      Object.defineProperty(literals, 'raw', { value: parts });
-      await (sql as any)(literals, ...params);
+      if (!pgPool) throw new Error('Postgres connection not available');
+      await pgPool.query(queryString, params);
     } else {
       const sqliteDb = getSqliteDb();
       const stmt = sqliteDb.prepare(queryString);
@@ -234,12 +233,9 @@ export const db = {
 
   async get(queryString: string, params: any[] = []): Promise<any | undefined> {
     if (IS_PRODUCTION) {
-      if (!sql) throw new Error('Postgres connection not available');
-      const parts = queryString.split(/\?|\$\d+/);
-      const literals = [...parts, ''] as any as TemplateStringsArray;
-      Object.defineProperty(literals, 'raw', { value: parts });
-      const rows = await (sql as any)(literals, ...params);
-      return rows[0];
+      if (!pgPool) throw new Error('Postgres connection not available');
+      const result = await pgPool.query(queryString, params);
+      return result.rows[0];
     } else {
       const sqliteDb = getSqliteDb();
       const stmt = sqliteDb.prepare(queryString);
@@ -247,6 +243,9 @@ export const db = {
     }
   }
 };
+
+// Export pgPool and IS_PRODUCTION for other modules to use
+export { pgPool, IS_PRODUCTION };
 
 // For backwards compatibility with existing code
 export function getDb(): any {
