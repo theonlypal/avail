@@ -12,11 +12,11 @@ function seedDemoLeads(db: Database.Database, teamId: string) {
       id, team_id, business_name, industry, location,
       phone, email, website, rating, review_count,
       website_score, social_presence, ad_presence,
-      opportunity_score, pain_points, recommended_services,
-      ai_summary, lat, lng, source, created_at
+      opportunity_score, pain_points, estimated_revenue,
+      employee_count, business_age, created_at
     ) VALUES (
       ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      ?, ?, ?, ?, ?, ?, ?, ?, ?
     )
   `);
 
@@ -89,9 +89,12 @@ function seedDemoLeads(db: Database.Database, teamId: string) {
       const phone = "(" + industry.areaCode + ") 555-" + String(1000 + leadCounter).padStart(4, '0');
       const website = hasWebsite ? "https://" + businessName.toLowerCase().replace(/[^a-z0-9]+/g, '') + ".com" : null;
       
-      const aiSummary = businessName + " is a " + industry.name + " business in " + industry.city + " with " + rating + " stars from " + reviewCount + " reviews. " + 
-        (painPoints.length > 0 ? "Key opportunities: " + painPoints.slice(0, 2).join(", ") + "." : "Well-established business with growth potential.");
-      
+      // Generate realistic business attributes
+      const employeeCount = Math.floor(Math.random() * 50) + 2;
+      const businessAge = Math.floor(Math.random() * 25) + 1;
+      const estimatedRevenue = employeeCount < 10 ? "$100K-$500K" :
+                               employeeCount < 25 ? "$500K-$2M" : "$2M-$10M";
+
       stmt.run(
         "lead-" + timestamp + "-" + leadCounter,
         teamId,
@@ -99,20 +102,18 @@ function seedDemoLeads(db: Database.Database, teamId: string) {
         industry.name,
         industry.city,
         phone,
-        null,
+        null, // email
         website,
         rating,
         reviewCount,
         websiteScore,
-        null,
-        0,
+        null, // social_presence
+        Math.random() > 0.7 ? 1 : 0, // ad_presence
         opportunityScore,
         JSON.stringify(painPoints),
-        JSON.stringify(services),
-        aiSummary,
-        industry.lat + (Math.random() - 0.5) * 0.1,
-        industry.lng + (Math.random() - 0.5) * 0.1,
-        "demo",
+        estimatedRevenue,
+        employeeCount,
+        businessAge,
         new Date().toISOString()
       );
       

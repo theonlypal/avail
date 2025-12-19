@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Phone, PhoneOff, Delete, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ImmersiveCallScreen } from "@/components/copilot/immersive-call-screen";
+import { UnifiedCallWrapper } from "@/components/dashboard/unified-call-wrapper";
 import type { Lead } from "@/types";
 
 interface KeypadDialerProps {
@@ -72,13 +72,8 @@ export function KeypadDialer({ onClose }: KeypadDialerProps) {
 
   if (calling && callLead) {
     return (
-      <ImmersiveCallScreen
+      <UnifiedCallWrapper
         lead={callLead}
-        onCallEnd={() => {
-          setCalling(false);
-          setCallLead(null);
-          setPhoneNumber("");
-        }}
         onClose={() => {
           setCalling(false);
           setCallLead(null);

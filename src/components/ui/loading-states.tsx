@@ -160,7 +160,7 @@ export function PageLoader() {
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center space-y-4">
         <LoadingSpinner size="large" />
-        <p className="text-slate-400">Loading Leadly.AI...</p>
+        <p className="text-slate-400">Loading AVAIL...</p>
       </div>
     </div>
   );

@@ -78,44 +78,92 @@ function initializeWebSocketServer(server) {
             console.log('[WebSocket] Stream started for call:', callSid);
 
             // Initialize Deepgram connection
+            console.log('[Deepgram] Checking API key configuration...');
+            console.log('[Deepgram] API key exists:', !!DEEPGRAM_API_KEY);
+            console.log('[Deepgram] API key length:', DEEPGRAM_API_KEY ? DEEPGRAM_API_KEY.length : 0);
+
             if (!DEEPGRAM_API_KEY) {
               console.error('[Deepgram] API key not configured');
               ws.send(JSON.stringify({ error: 'Deepgram API key missing' }));
               return;
             }
 
-            const deepgram = createClient(DEEPGRAM_API_KEY);
-            deepgramConnection = deepgram.listen.live({
-              model: 'nova-2',
-              language: 'en-US',
-              smart_format: true,
-              diarize: true,
-              punctuate: true,
-              interim_results: false, // Only send final transcripts (prevents frontend overload)
-              encoding: 'mulaw',
-              sample_rate: 8000,
-              channels: 1,
-            });
+            try {
+              console.log('[Deepgram] Creating Deepgram client...');
+              const deepgram = createClient(DEEPGRAM_API_KEY);
+              console.log('[Deepgram] Client created successfully');
+
+              console.log('[Deepgram] Opening live transcription connection...');
+              deepgramConnection = deepgram.listen.live({
+                model: 'nova-2',
+                language: 'en-US',
+                smart_format: true,
+                diarize: true, // AI-powered speaker separation - critical for identifying Lead vs Agent
+                punctuate: true,
+                interim_results: true, // Enable streaming partial transcripts for real-time updates (sub-second latency)
+                encoding: 'mulaw',
+                sample_rate: 8000,
+                channels: 1, // Mono: Twilio's both_tracks sends MIXED mono, not true stereo. Use diarization to separate speakers.
+              });
+              console.log('[Deepgram] Live connection opened successfully');
+            } catch (deepgramError) {
+              console.error('[Deepgram] INITIALIZATION ERROR:', deepgramError);
+              console.error('[Deepgram] Error message:', deepgramError.message);
+              console.error('[Deepgram] Error stack:', deepgramError.stack);
+              ws.send(JSON.stringify({ error: 'Deepgram initialization failed', details: deepgramError.message }));
+              return;
+            }
 
             // Handle Deepgram transcription results
             deepgramConnection.on(LiveTranscriptionEvents.Transcript, async (transcriptData) => {
               const transcript = transcriptData.channel?.alternatives?.[0];
-              if (!transcript?.transcript) return;
 
-              // CRITICAL: Since TwiML uses track="inbound_track", we ONLY receive the lead's voice
-              // Therefore, ALL transcripts from this WebSocket stream are from the Lead, not Agent
-              // Deepgram's diarization won't work correctly with a single track
-              const speakerLabel = 'Lead';
+              if (!transcript?.transcript) {
+                return; // Skip empty transcripts (silence)
+              }
+
+              // CRITICAL: With track="both_tracks", Twilio sends MIXED MONO audio with BOTH speakers
+              // Deepgram's diarization AI separates speakers by voice characteristics
+              // Speaker detection: Usually speaker 0 = Lead (answers first), speaker 1 = Agent (calls)
+              // If diarization provides speaker info in words, use it. Otherwise default to "Lead"
+              let speakerLabel = 'Lead'; // Default to Lead
+
+              if (transcript.words && transcript.words.length > 0) {
+                // Use diarization speaker from the first word
+                const firstSpeaker = transcript.words[0].speaker;
+                if (firstSpeaker !== undefined) {
+                  // Map Deepgram's speaker numbers to our labels
+                  // Typically speaker 0 = person who speaks first (Lead)
+                  // speaker 1 = second person (Agent/Web User)
+                  speakerLabel = firstSpeaker === 0 ? 'Lead' : 'Agent';
+                }
+              }
+
               const confidence = transcript.confidence || 0;
-
               console.log(`[Deepgram] [${speakerLabel}] ${transcript.transcript} (${confidence.toFixed(2)})`);
 
-              // Store in database
+              // Store in database with proper speaker identification
               await insertTranscript(callSid, speakerLabel, transcript.transcript, Date.now(), confidence);
             });
 
             deepgramConnection.on(LiveTranscriptionEvents.Error, (error) => {
-              console.error('[Deepgram] Error:', error);
+              console.error('[Deepgram] ERROR EVENT:', error);
+            });
+
+            deepgramConnection.on(LiveTranscriptionEvents.Open, () => {
+              console.log('[Deepgram] CONNECTION OPENED - Ready to receive audio');
+            });
+
+            deepgramConnection.on(LiveTranscriptionEvents.Close, () => {
+              console.log('[Deepgram] CONNECTION CLOSED');
+            });
+
+            deepgramConnection.on(LiveTranscriptionEvents.Metadata, (metadata) => {
+              console.log('[Deepgram] METADATA:', JSON.stringify(metadata, null, 2));
+            });
+
+            deepgramConnection.on(LiveTranscriptionEvents.Warning, (warning) => {
+              console.warn('[Deepgram] WARNING:', warning);
             });
 
             break;

@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 
 const navLinks = [
   { href: "/", label: "Home" },
-  { href: "/demos-live", label: "Explore Live Demos" },
-  { href: "/calculator", label: "Pricing Calculator" },
-  { href: "/lead", label: "Leadly AI" },
-  { href: "/team", label: "Team" },
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/crm", label: "CRM" },
+  { href: "/test-dialer", label: "AVAIL Co-Pilot" },
+  { href: "/demos", label: "Demos" },
+  { href: "/calculator", label: "Pricing" },
   { href: "/intake", label: "Contact" },
 ];
 
@@ -58,9 +59,9 @@ export function PublicNav() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
             <div className="bg-gradient-to-r from-blue-600 to-cyan-600 w-8 h-8 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="text-white font-bold text-lg">L</span>
+              <span className="text-white font-bold text-lg">A</span>
             </div>
-            <span className="text-white font-semibold text-xl">Leadly.AI</span>
+            <span className="text-white font-semibold text-xl">AVAIL</span>
           </Link>
 
           {/* Desktop Navigation */}

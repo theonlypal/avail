@@ -1,24 +1,24 @@
 /**
- * TEST AUTO-DIALER PAGE
+ * AVAIL CO-PILOT AUTO-DIALER
  *
- * Simple test page to initiate calls with any phone number
- * Features live transcription and AI coaching during calls
+ * AI-powered calling interface with real-time transcription and coaching
+ * The flagship feature of Leadly.AI - Cluely for Sales, but better
  */
 
 "use client";
 
 import { useState } from "react";
-import { Phone, Sparkles, ArrowLeft } from "lucide-react";
+import { Phone, Sparkles, ArrowLeft, Zap, Bot, Mic, PhoneCall, Clock, Target, CheckCircle2, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ImmersiveCallScreen } from "@/components/copilot/immersive-call-screen";
-import type { Lead } from "@/types";
+import UnifiedCallView from "@/components/unified-call-view";
 
 export default function TestDialerPage() {
   const router = useRouter();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [businessName, setBusinessName] = useState("");
-  const [callingLead, setCallingLead] = useState<Lead | null>(null);
+  const [callStarted, setCallStarted] = useState<string | false>(false); // Store call_sid
   const [error, setError] = useState("");
 
   // Format phone number as user types
@@ -62,46 +62,88 @@ export default function TestDialerPage() {
     const digits = phoneNumber.replace(/\D/g, "");
     const e164Phone = digits.length === 11 ? `+${digits}` : `+1${digits}`;
 
-    // Create a lead object for the call
-    const testLead: Lead = {
-      id: `test-${Date.now()}`,
-      business_name: businessName || "Test Call",
-      phone: e164Phone,
-      email: "",
-      website: "",
-      address: "",
-      location: "Test Location",
-      industry: "Test",
-      pain_points: [],
-      opportunity_score: 0,
-      rating: 0,
-      review_count: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      team_id: "",
-      owner: null,
-      status: "new",
-      last_contacted: null,
-      notes: "",
-      tags: [],
-      source: "manual",
-      verified: null,
-      verification_date: null,
-      folder_id: null,
-    };
+    // Initiate actual Twilio call
+    try {
+      const response = await fetch("/api/calls/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lead_id: `test-${Date.now()}`,
+          to_number: e164Phone,
+        }),
+      });
 
-    // Open immersive call screen
-    setCallingLead(testLead);
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || "Failed to initiate call");
+        alert(`Failed to start call: ${result.error}\n\n${result.details || ""}`);
+        return;
+      }
+
+      console.log(`✅ Twilio call initiated to ${e164Phone} - Call SID: ${result.call_sid}`);
+
+      // Store call SID in state to pass to LiveCallCoach
+      setCallStarted(result.call_sid);
+    } catch (err: any) {
+      setError("Failed to initiate call");
+      alert(`Failed to start call: ${err.message}`);
+      console.error("Call initiation error:", err);
+    }
   };
 
-  const handleCallEnd = (callData: any) => {
-    console.log("[TestDialer] Call completed", callData);
+  const handleCallEnd = async (transcript: any[], duration: number) => {
+    console.log("[Test Dialer] Call ended", { duration, transcriptLength: transcript.length });
+
+    // Save to database if desired
+    try {
+      await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contact_id: null,
+          direction: "outbound",
+          channel: "sms",
+          body: JSON.stringify(transcript),
+          status: "completed",
+          metadata: {
+            type: "test_call",
+            duration,
+            ai_coached: true,
+            phone_number: phoneNumber,
+            business_name: businessName || "Test Call"
+          },
+        }),
+      });
+    } catch (error) {
+      console.error("[Test Dialer] Failed to save call:", error);
+    }
+
     // Reset form
-    setCallingLead(null);
+    setCallStarted(false);
     setPhoneNumber("");
     setBusinessName("");
-    setError("");
   };
+
+  // If call started, show UnifiedCallView
+  if (callStarted) {
+    const digits = phoneNumber.replace(/\D/g, "");
+    const e164Phone = digits.length === 11 ? `+${digits}` : `+1${digits}`;
+
+    const leadContext = {
+      id: `test-${Date.now()}`,
+      name: businessName || "Test Call",
+      phone: e164Phone,
+      website: "",
+      address: "",
+      business_type: "Test",
+      rating: undefined,
+      user_ratings_total: undefined,
+      score: undefined,
+    };
+
+    return <UnifiedCallView callSid={callStarted} lead={leadContext} onCallEnd={handleCallEnd} />;
+  }
 
   // Show phone input form
   return (
@@ -117,67 +159,103 @@ export default function TestDialerPage() {
           Back
         </Button>
 
-        {/* Header */}
-        <div className="bg-gradient-to-r from-slate-900/50 to-slate-800/50 border border-white/10 rounded-2xl p-8 mb-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500/20 to-green-500/20 border border-emerald-500/30 flex items-center justify-center">
-              <Phone className="h-7 w-7 text-emerald-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-white">Test Auto-Dialer</h1>
-              <p className="text-slate-400 mt-1">
-                Enter a phone number to start a test call with live AI coaching
-              </p>
-            </div>
-          </div>
+        {/* AVAIL Co-Pilot Header */}
+        <div className="bg-gradient-to-r from-emerald-900/30 via-slate-900/50 to-green-900/30 border border-emerald-500/30 rounded-2xl p-8 mb-6 relative overflow-hidden">
+          {/* Background pattern */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent" />
 
-          <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 mt-6">
-            <div className="flex items-start gap-3">
-              <Sparkles className="h-5 w-5 text-cyan-400 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-slate-300">
-                <p className="font-medium mb-1">Unified Real-Time Transcription with AI Coaching</p>
-                <p className="text-slate-400">
-                  This makes a REAL phone call via Twilio with THREE transcription sources in one view:
-                  <br />
-                  <span className="text-cyan-400">• Your microphone</span> (AssemblyAI - 307ms latency)
-                  <br />
-                  <span className="text-purple-400">• Both sides of the call</span> (Twilio + Deepgram with speaker diarization)
-                  <br />
-                  <span className="text-amber-400">• AI coaching suggestions</span> (Claude Sonnet 4.5 streaming)
+          <div className="relative">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-sm font-semibold">
+              <Zap className="h-3 w-3" />
+              FLAGSHIP FEATURE
+            </div>
+
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                <Phone className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold text-white">AVAIL Co-Pilot</h1>
+                <p className="text-emerald-400 font-medium mt-1">
+                  AI-Powered Auto-Dialer with Real-Time Coaching
                 </p>
               </div>
             </div>
-          </div>
 
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mt-4">
-            <div className="flex items-start gap-3">
-              <span className="text-blue-400 text-xl mt-0.5">ℹ️</span>
-              <div className="text-sm text-blue-200">
-                <p className="font-medium mb-1">Twilio Required</p>
-                <p className="text-blue-300/80">
-                  This requires <span className="font-mono bg-blue-500/20 px-1 rounded">TWILIO_ACCOUNT_SID</span>,{' '}
-                  <span className="font-mono bg-blue-500/20 px-1 rounded">TWILIO_AUTH_TOKEN</span>, and{' '}
-                  <span className="font-mono bg-blue-500/20 px-1 rounded">TWILIO_PHONE_NUMBER</span> environment
-                  variables to be configured in Vercel.
-                </p>
+            {/* Feature stats */}
+            <div className="grid grid-cols-3 gap-4 mt-6">
+              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <Mic className="h-4 w-4 text-cyan-400" />
+                  <span className="text-xs font-medium text-cyan-400 uppercase">Your Voice</span>
+                </div>
+                <div className="text-2xl font-bold text-white">307ms</div>
+                <div className="text-xs text-slate-400">AssemblyAI latency</div>
+              </div>
+              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <PhoneCall className="h-4 w-4 text-purple-400" />
+                  <span className="text-xs font-medium text-purple-400 uppercase">Both Sides</span>
+                </div>
+                <div className="text-2xl font-bold text-white">Real-time</div>
+                <div className="text-xs text-slate-400">Deepgram diarization</div>
+              </div>
+              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <Bot className="h-4 w-4 text-amber-400" />
+                  <span className="text-xs font-medium text-amber-400 uppercase">AI Coach</span>
+                </div>
+                <div className="text-2xl font-bold text-white">400ms</div>
+                <div className="text-xs text-slate-400">Claude streaming</div>
               </div>
             </div>
-          </div>
 
-          {typeof window !== 'undefined' && window.location.protocol !== 'https:' && (
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mt-4">
+            {/* Description */}
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 mt-6">
               <div className="flex items-start gap-3">
-                <span className="text-yellow-400 text-xl mt-0.5">⚠️</span>
-                <div className="text-sm text-yellow-200">
-                  <p className="font-medium mb-1">HTTPS Required</p>
-                  <p className="text-yellow-300/80">
-                    Microphone access requires HTTPS. This feature works on the production deployment at{' '}
-                    <span className="font-mono bg-yellow-500/20 px-1 rounded">https://</span> but may not work on localhost.
+                <Sparkles className="h-5 w-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-slate-300">
+                  <p className="font-medium mb-1 text-emerald-300">The Ultimate Sales Calling Experience</p>
+                  <p className="text-slate-400">
+                    AVAIL Co-Pilot makes REAL phone calls via Twilio with THREE transcription sources unified in one view:
+                  </p>
+                  <ul className="mt-2 space-y-1">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-cyan-400" />
+                      <span className="text-cyan-400">Your microphone</span>
+                      <span className="text-slate-500">- See what you say in real-time</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-purple-400" />
+                      <span className="text-purple-400">Both sides of the call</span>
+                      <span className="text-slate-500">- Automatic speaker identification</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-amber-400" />
+                      <span className="text-amber-400">AI coaching suggestions</span>
+                      <span className="text-slate-500">- Smart talking points as you speak</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Requirements note */}
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mt-4">
+              <div className="flex items-start gap-3">
+                <span className="text-blue-400 text-xl mt-0.5">ℹ️</span>
+                <div className="text-sm text-blue-200">
+                  <p className="font-medium mb-1">Twilio Required</p>
+                  <p className="text-blue-300/80">
+                    This requires <span className="font-mono bg-blue-500/20 px-1 rounded">TWILIO_ACCOUNT_SID</span>,{' '}
+                    <span className="font-mono bg-blue-500/20 px-1 rounded">TWILIO_AUTH_TOKEN</span>, and{' '}
+                    <span className="font-mono bg-blue-500/20 px-1 rounded">TWILIO_PHONE_NUMBER</span> to be configured.
                   </p>
                 </div>
               </div>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Phone Input Form */}
@@ -263,59 +341,75 @@ export default function TestDialerPage() {
           </div>
         </div>
 
-        {/* Features List */}
+        {/* AVAIL Features Grid */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-slate-900/30 border border-white/10 rounded-xl p-4">
-            <div className="text-cyan-400 font-semibold mb-1">3-in-1 Transcription</div>
-            <div className="text-xs text-slate-400">Mic + Call + AI unified view</div>
+          <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <Mic className="h-5 w-5 text-cyan-400" />
+              <div className="text-cyan-400 font-semibold">3-in-1 Transcription</div>
+            </div>
+            <div className="text-sm text-slate-400">Mic + Call + AI unified in one real-time view</div>
           </div>
-          <div className="bg-slate-900/30 border border-white/10 rounded-xl p-4">
-            <div className="text-purple-400 font-semibold mb-1">Dual-Side Audio</div>
-            <div className="text-xs text-slate-400">Both speakers identified</div>
+          <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="h-5 w-5 text-purple-400" />
+              <div className="text-purple-400 font-semibold">Smart Diarization</div>
+            </div>
+            <div className="text-sm text-slate-400">Automatic speaker identification for both sides</div>
           </div>
-          <div className="bg-slate-900/30 border border-white/10 rounded-xl p-4">
-            <div className="text-amber-400 font-semibold mb-1">Live AI Coach</div>
-            <div className="text-xs text-slate-400">Real-time suggestions</div>
+          <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <Bot className="h-5 w-5 text-amber-400" />
+              <div className="text-amber-400 font-semibold">AI Sales Coach</div>
+            </div>
+            <div className="text-sm text-slate-400">Context-aware suggestions and objection handling</div>
           </div>
         </div>
 
-        {/* Quick Test Numbers */}
-        <div className="mt-8 bg-slate-900/30 border border-white/10 rounded-xl p-6">
-          <h3 className="text-sm font-medium text-slate-300 mb-3">Quick Test Numbers</h3>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setPhoneNumber("(555) 123-4567")}
-              className="px-4 py-2 bg-slate-800/50 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-slate-700/50 hover:text-white transition-colors"
-            >
-              (555) 123-4567
-            </button>
-            <button
-              onClick={() => setPhoneNumber("(555) 987-6543")}
-              className="px-4 py-2 bg-slate-800/50 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-slate-700/50 hover:text-white transition-colors"
-            >
-              (555) 987-6543
-            </button>
-            <button
-              onClick={() => setPhoneNumber("(555) 111-2222")}
-              className="px-4 py-2 bg-slate-800/50 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-slate-700/50 hover:text-white transition-colors"
-            >
-              (555) 111-2222
-            </button>
+        {/* Why AVAIL Co-Pilot */}
+        <div className="mt-8 bg-gradient-to-r from-emerald-900/20 to-green-900/20 border border-emerald-500/30 rounded-xl p-6">
+          <h3 className="text-lg font-semibold text-emerald-400 mb-4 flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Why AVAIL Co-Pilot?
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+              <span className="text-slate-300"><span className="text-white font-medium">Cluely costs $500-2000/mo</span> - AVAIL is built-in</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+              <span className="text-slate-300"><span className="text-white font-medium">Context-aware</span> - Knows lead score, pain points, industry</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+              <span className="text-slate-300"><span className="text-white font-medium">Full integration</span> - CRM, transcripts, notes auto-saved</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+              <span className="text-slate-300"><span className="text-white font-medium">707ms total latency</span> - Faster than speaking</span>
+            </div>
           </div>
-          <p className="text-xs text-slate-500 mt-3">
-            These are test numbers for demo purposes only
-          </p>
+        </div>
+
+        {/* Links */}
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800/50 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-slate-700/50 hover:text-white transition-colors"
+          >
+            <Target className="h-4 w-4" />
+            Call from Lead List
+          </Link>
+          <Link
+            href="/demos"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800/50 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-slate-700/50 hover:text-white transition-colors"
+          >
+            <Sparkles className="h-4 w-4" />
+            See All Demos
+          </Link>
         </div>
       </div>
-
-      {/* Immersive Call Screen */}
-      {callingLead && (
-        <ImmersiveCallScreen
-          lead={callingLead}
-          onCallEnd={handleCallEnd}
-          onClose={() => setCallingLead(null)}
-        />
-      )}
     </div>
   );
 }

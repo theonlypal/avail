@@ -14,8 +14,139 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calculator, TrendingUp, Clock, DollarSign, AlertCircle, ArrowRight } from "lucide-react";
+import { Calculator, TrendingUp, Clock, DollarSign, AlertCircle, ArrowRight, Wrench, Heart, Briefcase, Dumbbell, Home, UtensilsCrossed, Car, Building2 } from "lucide-react";
 import type { TierId } from "@/lib/config/pricing";
+
+// Business model presets for common industries
+const BUSINESS_PRESETS = [
+  {
+    id: 'home-services',
+    name: 'Home Services',
+    description: 'Plumbing, HVAC, Electrical, etc.',
+    icon: Wrench,
+    color: 'from-blue-500 to-cyan-500',
+    defaults: {
+      jobsPerMonth: 25,
+      avgTicket: 450,
+      closeRate: 35,
+      adminHoursPerWeek: 12,
+      hourlyValue: 75,
+      afterHoursLeadsLost: 30,
+      noShowRate: 15,
+      currentAdSpend: 1500,
+    },
+  },
+  {
+    id: 'healthcare',
+    name: 'Healthcare',
+    description: 'Dental, Chiropractic, Med Spa',
+    icon: Heart,
+    color: 'from-pink-500 to-rose-500',
+    defaults: {
+      jobsPerMonth: 80,
+      avgTicket: 250,
+      closeRate: 45,
+      adminHoursPerWeek: 20,
+      hourlyValue: 50,
+      afterHoursLeadsLost: 25,
+      noShowRate: 20,
+      currentAdSpend: 2000,
+    },
+  },
+  {
+    id: 'professional',
+    name: 'Professional Services',
+    description: 'Legal, Accounting, Consulting',
+    icon: Briefcase,
+    color: 'from-purple-500 to-indigo-500',
+    defaults: {
+      jobsPerMonth: 12,
+      avgTicket: 2500,
+      closeRate: 25,
+      adminHoursPerWeek: 15,
+      hourlyValue: 150,
+      afterHoursLeadsLost: 20,
+      noShowRate: 10,
+      currentAdSpend: 3000,
+    },
+  },
+  {
+    id: 'fitness',
+    name: 'Fitness & Wellness',
+    description: 'Gyms, Personal Training, Yoga',
+    icon: Dumbbell,
+    color: 'from-green-500 to-emerald-500',
+    defaults: {
+      jobsPerMonth: 40,
+      avgTicket: 150,
+      closeRate: 40,
+      adminHoursPerWeek: 10,
+      hourlyValue: 40,
+      afterHoursLeadsLost: 35,
+      noShowRate: 25,
+      currentAdSpend: 800,
+    },
+  },
+  {
+    id: 'real-estate',
+    name: 'Real Estate',
+    description: 'Agents, Brokers, Property Mgmt',
+    icon: Home,
+    color: 'from-amber-500 to-orange-500',
+    defaults: {
+      jobsPerMonth: 4,
+      avgTicket: 8000,
+      closeRate: 20,
+      adminHoursPerWeek: 25,
+      hourlyValue: 100,
+      afterHoursLeadsLost: 40,
+      noShowRate: 15,
+      currentAdSpend: 5000,
+    },
+  },
+  {
+    id: 'restaurant',
+    name: 'Restaurant',
+    description: 'Dining, Catering, Events',
+    icon: UtensilsCrossed,
+    color: 'from-red-500 to-pink-500',
+    defaults: {
+      jobsPerMonth: 500,
+      avgTicket: 45,
+      closeRate: 60,
+      adminHoursPerWeek: 15,
+      hourlyValue: 35,
+      afterHoursLeadsLost: 20,
+      noShowRate: 10,
+      currentAdSpend: 1000,
+    },
+  },
+  {
+    id: 'automotive',
+    name: 'Automotive',
+    description: 'Repair, Detailing, Sales',
+    icon: Car,
+    color: 'from-slate-500 to-zinc-500',
+    defaults: {
+      jobsPerMonth: 60,
+      avgTicket: 350,
+      closeRate: 50,
+      adminHoursPerWeek: 10,
+      hourlyValue: 60,
+      afterHoursLeadsLost: 25,
+      noShowRate: 12,
+      currentAdSpend: 1200,
+    },
+  },
+  {
+    id: 'custom',
+    name: 'Custom',
+    description: 'Enter your own numbers',
+    icon: Building2,
+    color: 'from-cyan-500 to-blue-500',
+    defaults: null,
+  },
+];
 
 interface CalculatorInputs {
   jobsPerMonth: number;
@@ -41,6 +172,7 @@ interface CalculatorResults {
 
 export default function ROICalculatorPage() {
   const router = useRouter();
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [inputs, setInputs] = useState<CalculatorInputs>({
     jobsPerMonth: 0,
     avgTicket: 0,
@@ -53,6 +185,15 @@ export default function ROICalculatorPage() {
   });
 
   const [results, setResults] = useState<CalculatorResults | null>(null);
+
+  const handlePresetSelect = (presetId: string) => {
+    setSelectedPreset(presetId);
+    const preset = BUSINESS_PRESETS.find(p => p.id === presetId);
+    if (preset?.defaults) {
+      setInputs(preset.defaults);
+      setResults(null); // Clear previous results
+    }
+  };
 
   const handleInputChange = (field: keyof CalculatorInputs, value: string) => {
     const numValue = parseFloat(value) || 0;
@@ -165,12 +306,52 @@ export default function ROICalculatorPage() {
           </p>
         </div>
 
+        {/* Business Type Presets */}
+        <Card className="border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02]">
+          <CardHeader>
+            <CardTitle className="text-2xl text-white">Select Your Business Type</CardTitle>
+            <CardDescription className="text-slate-400">
+              Choose a preset to auto-fill industry averages, or enter custom values
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {BUSINESS_PRESETS.map((preset) => {
+                const Icon = preset.icon;
+                const isSelected = selectedPreset === preset.id;
+
+                return (
+                  <button
+                    key={preset.id}
+                    onClick={() => handlePresetSelect(preset.id)}
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      isSelected
+                        ? `bg-gradient-to-br ${preset.color} border-white/30 shadow-lg`
+                        : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <Icon className={`w-6 h-6 mb-2 ${isSelected ? 'text-white' : 'text-slate-400'}`} />
+                    <div className={`font-medium ${isSelected ? 'text-white' : 'text-slate-200'}`}>
+                      {preset.name}
+                    </div>
+                    <div className={`text-xs ${isSelected ? 'text-white/70' : 'text-slate-500'}`}>
+                      {preset.description}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Input Form */}
         <Card className="border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02]">
           <CardHeader>
             <CardTitle className="text-2xl text-white">Your Business Metrics</CardTitle>
             <CardDescription className="text-slate-400">
-              Enter your current numbers to see your potential savings
+              {selectedPreset && selectedPreset !== 'custom'
+                ? 'Pre-filled with industry averages. Adjust to match your business.'
+                : 'Enter your current numbers to see your potential savings'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">

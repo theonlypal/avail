@@ -16,9 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Leadly.AI — Local Lead OS",
+  title: "AVAIL — AI-Powered Business Growth",
   description:
-    "Leadly.AI discovers, enriches, scores, and automates outreach for local business leads.",
+    "AVAIL discovers, enriches, scores, and automates outreach for local business leads. Power your growth with AI.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

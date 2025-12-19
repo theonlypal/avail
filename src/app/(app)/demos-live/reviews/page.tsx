@@ -12,7 +12,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Star, Send, Upload, CheckCircle, Clock, XCircle, Mail, MessageSquare } from 'lucide-react';
+import { Star, Send, Upload, CheckCircle, Clock, XCircle, Mail, MessageSquare, ArrowLeft, Zap } from 'lucide-react';
+import Link from 'next/link';
 
 interface ReviewRequest {
   id: string;
@@ -171,67 +172,81 @@ export default function ReviewsDemo() {
   };
 
   const statusConfig = {
-    pending: { icon: Clock, color: 'text-gray-500', bg: 'bg-gray-100', label: 'Pending' },
-    sent: { icon: Send, color: 'text-blue-500', bg: 'bg-blue-100', label: 'Sent' },
-    responded: { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-100', label: 'Responded' },
-    declined: { icon: XCircle, color: 'text-red-500', bg: 'bg-red-100', label: 'Declined' },
+    pending: { icon: Clock, color: 'text-slate-400', bg: 'bg-slate-500/20', label: 'Pending' },
+    sent: { icon: Send, color: 'text-blue-400', bg: 'bg-blue-500/20', label: 'Sent' },
+    responded: { icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-500/20', label: 'Responded' },
+    declined: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/20', label: 'Declined' },
   };
 
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center py-12">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-400">Loading reviews...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Reviews Management</h1>
-          <p className="text-gray-600">Request and track customer reviews across platforms</p>
+          <div className="flex items-center gap-4 mb-4">
+            <Link
+              href="/demos"
+              className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Demos
+            </Link>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30">
+              <Zap className="w-3 h-3" />
+              Live Demo
+            </span>
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-2">Reviews Management</h1>
+          <p className="text-slate-400">Request and track customer reviews across platforms</p>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-            <div className="text-sm text-gray-600">Total Requests</div>
+          <div className="bg-slate-900/50 border border-white/10 rounded-lg p-6 hover:bg-slate-900/70 transition-all">
+            <div className="text-2xl font-bold text-white">{stats.total}</div>
+            <div className="text-sm text-slate-400">Total Requests</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-2xl font-bold text-blue-600">{stats.sent}</div>
-            <div className="text-sm text-gray-600">Sent</div>
+          <div className="bg-slate-900/50 border border-white/10 rounded-lg p-6 hover:bg-slate-900/70 transition-all">
+            <div className="text-2xl font-bold text-blue-400">{stats.sent}</div>
+            <div className="text-sm text-slate-400">Sent</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-2xl font-bold text-green-600">{stats.responded}</div>
-            <div className="text-sm text-gray-600">Responses</div>
+          <div className="bg-slate-900/50 border border-white/10 rounded-lg p-6 hover:bg-slate-900/70 transition-all">
+            <div className="text-2xl font-bold text-green-400">{stats.responded}</div>
+            <div className="text-sm text-slate-400">Responses</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-slate-900/50 border border-white/10 rounded-lg p-6 hover:bg-slate-900/70 transition-all">
             <div className="flex items-center gap-2">
               <Star className="w-6 h-6 text-yellow-400 fill-yellow-400" />
-              <div className="text-2xl font-bold text-gray-900">{stats.avgRating.toFixed(1)}</div>
+              <div className="text-2xl font-bold text-white">{stats.avgRating.toFixed(1)}</div>
             </div>
-            <div className="text-sm text-gray-600">Avg Rating</div>
+            <div className="text-sm text-slate-400">Avg Rating</div>
           </div>
         </div>
 
         {/* Send New Review Request */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Send Review Request</h2>
+        <div className="bg-slate-900/50 border border-white/10 rounded-lg p-6 mb-8">
+          <h2 className="text-xl font-bold text-white mb-4">Send Review Request</h2>
           <form onSubmit={handleSendReviewRequest} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   Select Customer
                 </label>
                 <select
                   value={selectedContact}
                   onChange={(e) => setSelectedContact(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
+                  className="w-full px-3 py-2 bg-slate-800/50 border border-white/10 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white"
                   required
                 >
                   <option value="">Choose a customer...</option>
@@ -244,13 +259,13 @@ export default function ReviewsDemo() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   Channel
                 </label>
                 <select
                   value={channel}
                   onChange={(e) => setChannel(e.target.value as 'sms' | 'email')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
+                  className="w-full px-3 py-2 bg-slate-800/50 border border-white/10 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white"
                 >
                   <option value="sms">SMS</option>
                   <option value="email">Email</option>
@@ -258,13 +273,13 @@ export default function ReviewsDemo() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   Platform
                 </label>
                 <select
                   value={platform}
                   onChange={(e) => setPlatform(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
+                  className="w-full px-3 py-2 bg-slate-800/50 border border-white/10 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white"
                 >
                   <option value="google">Google</option>
                   <option value="yelp">Yelp</option>
@@ -278,7 +293,7 @@ export default function ReviewsDemo() {
               <button
                 type="submit"
                 disabled={sending || !selectedContact}
-                className="flex items-center gap-2 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-2 px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Send className="w-4 h-4" />
                 {sending ? 'Sending...' : 'Send Request'}
@@ -287,7 +302,7 @@ export default function ReviewsDemo() {
               <button
                 type="button"
                 onClick={() => alert('CSV import feature coming soon!')}
-                className="flex items-center gap-2 px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                className="flex items-center gap-2 px-6 py-2 bg-slate-800/50 text-slate-300 border border-white/10 rounded-lg hover:bg-slate-800 transition-colors"
               >
                 <Upload className="w-4 h-4" />
                 Import from CSV
@@ -297,42 +312,42 @@ export default function ReviewsDemo() {
         </div>
 
         {/* Review Requests Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">Review Requests</h2>
+        <div className="bg-slate-900/50 border border-white/10 rounded-lg overflow-hidden">
+          <div className="p-6 border-b border-white/10">
+            <h2 className="text-xl font-bold text-white">Review Requests</h2>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-slate-800/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                     Customer
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                     Channel
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                     Platform
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                     Sent
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                     Rating
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                     Review
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-white/10">
                 {reviewRequests.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
                       No review requests yet. Send your first one above!
                     </td>
                   </tr>
@@ -340,26 +355,26 @@ export default function ReviewsDemo() {
                   reviewRequests.map((request) => {
                     const StatusIcon = statusConfig[request.status].icon;
                     return (
-                      <tr key={request.id} className="hover:bg-gray-50">
+                      <tr key={request.id} className="hover:bg-white/5 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-white">
                             {request.contact_name || 'Unknown'}
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-slate-400">
                             {request.contact_email || request.contact_phone}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             {request.channel === 'sms' ? (
-                              <MessageSquare className="w-4 h-4 text-blue-500" />
+                              <MessageSquare className="w-4 h-4 text-blue-400" />
                             ) : (
-                              <Mail className="w-4 h-4 text-purple-500" />
+                              <Mail className="w-4 h-4 text-purple-400" />
                             )}
-                            <span className="text-sm text-gray-900 capitalize">{request.channel}</span>
+                            <span className="text-sm text-slate-300 capitalize">{request.channel}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300 capitalize">
                           {request.platform || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -368,7 +383,7 @@ export default function ReviewsDemo() {
                             {statusConfig[request.status].label}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
                           {request.sent_at ? new Date(request.sent_at).toLocaleDateString() : 'Not sent'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -377,21 +392,21 @@ export default function ReviewsDemo() {
                               {Array.from({ length: 5 }).map((_, i) => (
                                 <Star
                                   key={i}
-                                  className={`w-4 h-4 ${i < request.rating! ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                                  className={`w-4 h-4 ${i < request.rating! ? 'text-yellow-400 fill-yellow-400' : 'text-slate-600'}`}
                                 />
                               ))}
                             </div>
                           ) : (
-                            <span className="text-sm text-gray-400">—</span>
+                            <span className="text-sm text-slate-500">-</span>
                           )}
                         </td>
                         <td className="px-6 py-4 max-w-xs">
                           {request.review_text ? (
-                            <div className="text-sm text-gray-600 truncate" title={request.review_text}>
+                            <div className="text-sm text-slate-300 truncate" title={request.review_text}>
                               {request.review_text}
                             </div>
                           ) : (
-                            <span className="text-sm text-gray-400">—</span>
+                            <span className="text-sm text-slate-500">-</span>
                           )}
                         </td>
                       </tr>

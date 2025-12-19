@@ -1,15 +1,36 @@
 /**
- * Leadly.AI Dashboard - Modern Professional Edition
+ * AVAIL Dashboard - Modern Professional Edition
  *
  * Primary focus: Clean interface with integrated AI Copilot
  * Natural language queries to find and populate leads
+ * Real-time metrics from database
  */
 
 "use client";
 
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Sparkles, Folder, Plus, Settings, MessageSquare, Send, X, Minimize2, Maximize2, Bot, Target } from "lucide-react";
+import {
+  Search,
+  Sparkles,
+  Folder,
+  Settings,
+  MessageSquare,
+  Send,
+  X,
+  Minimize2,
+  Maximize2,
+  Bot,
+  Target,
+  TrendingUp,
+  Users,
+  Calendar,
+  Mail,
+  DollarSign,
+  Zap,
+  ArrowUpRight,
+  ArrowDownRight,
+} from "lucide-react";
 import type { LeadFilter } from "@/types";
 import { fetchLeads } from "@/lib/leads-client";
 import { LeadTable } from "@/components/dashboard/lead-table";
@@ -17,12 +38,54 @@ import { AISearchBar } from "@/components/dashboard/ai-search-bar";
 import { FolderManager } from "@/components/dashboard/folder-manager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 
 interface CopilotMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+}
+
+interface DashboardMetrics {
+  leads: {
+    total: number;
+    avgScore: number;
+    highValue: number;
+    thisWeek: number;
+    thisMonth: number;
+  };
+  industries: { name: string; count: number }[];
+  deals: {
+    total: number;
+    totalValue: number;
+    won: number;
+    wonValue: number;
+    thisMonth: number;
+  };
+  stages: { name: string; count: number; value: number }[];
+  contacts: {
+    total: number;
+    thisWeek: number;
+    thisMonth: number;
+  };
+  messages: {
+    total: number;
+    sent: number;
+    received: number;
+    thisWeek: number;
+  };
+  appointments: {
+    total: number;
+    upcoming: number;
+    completed: number;
+    thisWeek: number;
+  };
+  automations: {
+    active_rules: number;
+    total_executions: number;
+    executions_this_week: number;
+  };
 }
 
 export default function DashboardPage() {
@@ -57,27 +120,55 @@ export default function DashboardPage() {
     queryFn: () => fetchLeads(filter),
   });
 
+  // Fetch real dashboard metrics from API
+  const { data: metrics } = useQuery<DashboardMetrics>({
+    queryKey: ["dashboard-metrics"],
+    queryFn: async () => {
+      const res = await fetch("/api/dashboard/metrics?team_id=default-team");
+      if (!res.ok) throw new Error("Failed to fetch metrics");
+      return res.json();
+    },
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Fallback stats from local leads data
   const stats = useMemo(() => {
+    if (metrics) {
+      return {
+        total: metrics.leads.total,
+        highValue: metrics.leads.highValue,
+        avgScore: metrics.leads.avgScore,
+        thisWeek: metrics.leads.thisWeek,
+      };
+    }
     return {
       total: leads.length,
       highValue: leads.filter(l => l.opportunity_score >= 80).length,
-      contacted: 0, // TODO: Track contacted status
       avgScore: leads.length > 0
         ? Math.round(leads.reduce((sum, l) => sum + l.opportunity_score, 0) / leads.length)
         : 0,
+      thisWeek: 0,
     };
-  }, [leads]);
+  }, [leads, metrics]);
 
-  const industries = useMemo(
-    () =>
-      Object.entries(
-        leads.reduce<Record<string, number>>((acc, lead) => {
-          acc[lead.industry] = (acc[lead.industry] ?? 0) + 1;
-          return acc;
-        }, {})
-      ).sort((a, b) => b[1] - a[1]),
-    [leads]
-  );
+  const industries = useMemo(() => {
+    if (metrics?.industries && metrics.industries.length > 0) {
+      return metrics.industries.map(i => [i.name, i.count] as [string, number]);
+    }
+    return Object.entries(
+      leads.reduce<Record<string, number>>((acc, lead) => {
+        acc[lead.industry] = (acc[lead.industry] ?? 0) + 1;
+        return acc;
+      }, {})
+    ).sort((a, b) => b[1] - a[1]);
+  }, [leads, metrics]);
+
+  // Format currency
+  const formatCurrency = (value: number) => {
+    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `$${(value / 1000).toFixed(1)}K`;
+    return `$${value.toFixed(0)}`;
+  };
 
   // Auto-scroll copilot messages
   useEffect(() => {
@@ -194,7 +285,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white">
-                  Leadly.AI
+                  AVAIL
                 </h1>
                 <p className="text-sm text-slate-400">
                   AI-Powered Lead Intelligence
@@ -235,38 +326,129 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Metrics Grid - More Professional */}
+        {/* Primary Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-slate-900/50 border border-white/10 rounded-xl p-5">
+          <Link href="/crm/leads" className="bg-slate-900/50 border border-white/10 rounded-xl p-5 hover:border-cyan-500/30 transition-all group">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Leads</span>
+              <Target className="h-4 w-4 text-cyan-400" />
             </div>
-            <div className="text-3xl font-bold text-white">{stats.total}</div>
-            <div className="text-xs text-slate-500 mt-1">Active in pipeline</div>
-          </div>
+            <div className="text-3xl font-bold text-white group-hover:text-cyan-400 transition-colors">{stats.total}</div>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-slate-500">Active in pipeline</span>
+              {stats.thisWeek > 0 && (
+                <span className="text-xs text-emerald-400 flex items-center gap-0.5">
+                  <ArrowUpRight className="h-3 w-3" />
+                  +{stats.thisWeek} this week
+                </span>
+              )}
+            </div>
+          </Link>
 
-          <div className="bg-slate-900/50 border border-white/10 rounded-xl p-5">
+          <Link href="/crm/leads" className="bg-slate-900/50 border border-white/10 rounded-xl p-5 hover:border-emerald-500/30 transition-all group">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">High Value</span>
+              <TrendingUp className="h-4 w-4 text-emerald-400" />
             </div>
             <div className="text-3xl font-bold text-emerald-400">{stats.highValue}</div>
             <div className="text-xs text-slate-500 mt-1">Score ≥ 80</div>
+          </Link>
+
+          <Link href="/crm/deals" className="bg-slate-900/50 border border-white/10 rounded-xl p-5 hover:border-green-500/30 transition-all group">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Pipeline Value</span>
+              <DollarSign className="h-4 w-4 text-green-400" />
+            </div>
+            <div className="text-3xl font-bold text-green-400">
+              {formatCurrency(metrics?.deals.totalValue || 0)}
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              {metrics?.deals.total || 0} active deals
+            </div>
+          </Link>
+
+          <Link href="/crm/contacts" className="bg-slate-900/50 border border-white/10 rounded-xl p-5 hover:border-blue-500/30 transition-all group">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Contacts</span>
+              <Users className="h-4 w-4 text-blue-400" />
+            </div>
+            <div className="text-3xl font-bold text-blue-400">
+              {metrics?.contacts.total || 0}
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-slate-500">In CRM</span>
+              {metrics?.contacts.thisWeek ? (
+                <span className="text-xs text-emerald-400 flex items-center gap-0.5">
+                  <ArrowUpRight className="h-3 w-3" />
+                  +{metrics.contacts.thisWeek} this week
+                </span>
+              ) : null}
+            </div>
+          </Link>
+        </div>
+
+        {/* Secondary Metrics Row */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <Link href="/inbox" className="bg-slate-900/30 border border-white/5 rounded-xl p-4 hover:border-purple-500/30 transition-all">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                <Mail className="h-5 w-5 text-purple-400" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-white">{metrics?.messages.total || 0}</div>
+                <div className="text-xs text-slate-500">Messages</div>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/crm/activities" className="bg-slate-900/30 border border-white/5 rounded-xl p-4 hover:border-orange-500/30 transition-all">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                <Calendar className="h-5 w-5 text-orange-400" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-white">{metrics?.appointments.upcoming || 0}</div>
+                <div className="text-xs text-slate-500">Upcoming</div>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/settings/automations" className="bg-slate-900/30 border border-white/5 rounded-xl p-4 hover:border-amber-500/30 transition-all">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                <Zap className="h-5 w-5 text-amber-400" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-white">{metrics?.automations.active_rules || 0}</div>
+                <div className="text-xs text-slate-500">Automations</div>
+              </div>
+            </div>
+          </Link>
+
+          <div className="bg-slate-900/30 border border-white/5 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-cyan-400" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-cyan-400">{stats.avgScore}</div>
+                <div className="text-xs text-slate-500">Avg Score</div>
+              </div>
+            </div>
           </div>
 
-          <div className="bg-slate-900/50 border border-white/10 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Avg Score</span>
+          <div className="bg-slate-900/30 border border-white/5 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-emerald-400" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-emerald-400">
+                  {formatCurrency(metrics?.deals.wonValue || 0)}
+                </div>
+                <div className="text-xs text-slate-500">Won Value</div>
+              </div>
             </div>
-            <div className="text-3xl font-bold text-cyan-400">{stats.avgScore}</div>
-            <div className="text-xs text-slate-500 mt-1">Opportunity rating</div>
-          </div>
-
-          <div className="bg-slate-900/50 border border-white/10 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Industries</span>
-            </div>
-            <div className="text-3xl font-bold text-purple-400">{industries.length}</div>
-            <div className="text-xs text-slate-500 mt-1">Unique sectors</div>
           </div>
         </div>
 
@@ -390,8 +572,12 @@ export default function DashboardPage() {
 
         {/* Lead Discovery Modal */}
         {showDiscoveryModal && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-2xl">
+          <div className="fixed inset-0 z-50 flex flex-col">
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/70" onClick={() => { setShowDiscoveryModal(false); setDiscoveryResult(null); }} />
+            {/* Scrollable container */}
+            <div className="relative flex-1 overflow-y-auto overscroll-contain -webkit-overflow-scrolling-touch p-4 pt-8 md:pt-4 md:flex md:items-center md:justify-center">
+              <div className="relative bg-slate-900 border border-white/10 rounded-2xl w-full max-w-2xl mx-auto mb-8 md:mb-0">
               <div className="border-b border-white/10 p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -542,17 +728,20 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+          </div>
         )}
 
         {/* AI Copilot Floating Widget */}
         {copilotOpen && (
           <div
-            className={`fixed bottom-6 right-6 z-50 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ${
-              copilotMinimized ? "w-80 h-16" : "w-96 h-[600px]"
+            className={`fixed z-50 bg-slate-900 border border-white/10 shadow-2xl overflow-hidden transition-all duration-300 flex flex-col ${
+              copilotMinimized
+                ? "bottom-6 right-6 w-80 h-16 rounded-2xl"
+                : "inset-4 md:inset-auto md:bottom-6 md:right-6 md:w-96 md:h-[600px] rounded-2xl"
             }`}
           >
         {/* Copilot Header */}
-        <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border-b border-white/10 p-4 flex items-center justify-between">
+        <div className="flex-shrink-0 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border-b border-white/10 p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
               <Bot className="h-4 w-4 text-white" />
@@ -586,7 +775,7 @@ export default function DashboardPage() {
         {/* Copilot Messages (only visible when not minimized) */}
         {!copilotMinimized && (
           <>
-            <div className="h-[calc(100%-128px)] overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 h-[calc(100%-128px)]">
               {copilotMessages.map((msg) => (
                 <div
                   key={msg.id}
@@ -621,7 +810,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Copilot Input */}
-            <div className="border-t border-white/10 p-4">
+            <div className="flex-shrink-0 border-t border-white/10 p-4">
               <div className="flex items-center gap-2">
                 <input
                   type="text"

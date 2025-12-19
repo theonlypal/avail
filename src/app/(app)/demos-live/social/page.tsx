@@ -12,7 +12,8 @@
  */
 
 import { useState } from 'react';
-import { Calendar, Image, Sparkles, Facebook, Instagram, Linkedin, Twitter, Plus, Upload } from 'lucide-react';
+import { Calendar, Image, Sparkles, Facebook, Instagram, Linkedin, Twitter, Plus, Upload, ArrowLeft, Zap } from 'lucide-react';
+import Link from 'next/link';
 
 interface SocialPost {
   id: string;
@@ -100,10 +101,10 @@ export default function SocialMediaDemo() {
   ];
 
   const platformConfig = {
-    facebook: { icon: Facebook, color: 'text-blue-600', bg: 'bg-blue-100', name: 'Facebook' },
-    instagram: { icon: Instagram, color: 'text-pink-600', bg: 'bg-pink-100', name: 'Instagram' },
-    linkedin: { icon: Linkedin, color: 'text-blue-700', bg: 'bg-blue-100', name: 'LinkedIn' },
-    twitter: { icon: Twitter, color: 'text-sky-500', bg: 'bg-sky-100', name: 'Twitter' },
+    facebook: { icon: Facebook, color: 'text-blue-400', bg: 'bg-blue-500/20', name: 'Facebook' },
+    instagram: { icon: Instagram, color: 'text-pink-400', bg: 'bg-pink-500/20', name: 'Instagram' },
+    linkedin: { icon: Linkedin, color: 'text-blue-400', bg: 'bg-blue-500/20', name: 'LinkedIn' },
+    twitter: { icon: Twitter, color: 'text-sky-400', bg: 'bg-sky-500/20', name: 'Twitter' },
   };
 
   async function handleGenerateCaption() {
@@ -132,12 +133,25 @@ export default function SocialMediaDemo() {
   const [assets] = useState<Asset[]>(sampleAssets);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Social Media Manager</h1>
-          <p className="text-gray-600">Schedule posts, manage assets, and generate engaging content</p>
+          <div className="flex items-center gap-4 mb-4">
+            <Link
+              href="/demos"
+              className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Demos
+            </Link>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              <Zap className="w-3 h-3" />
+              Live Demo
+            </span>
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-2">Social Media Manager</h1>
+          <p className="text-slate-400">Schedule posts, manage assets, and generate engaging content</p>
         </div>
 
         {/* Navigation Tabs */}
@@ -146,8 +160,8 @@ export default function SocialMediaDemo() {
             onClick={() => setView('calendar')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-colors ${
               view === 'calendar'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
+                ? 'bg-cyan-500 text-white'
+                : 'bg-slate-800/50 border border-white/10 text-slate-300 hover:bg-slate-800'
             }`}
           >
             <Calendar className="w-5 h-5" />
@@ -157,8 +171,8 @@ export default function SocialMediaDemo() {
             onClick={() => setView('posts')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-colors ${
               view === 'posts'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
+                ? 'bg-cyan-500 text-white'
+                : 'bg-slate-800/50 border border-white/10 text-slate-300 hover:bg-slate-800'
             }`}
           >
             <Plus className="w-5 h-5" />
@@ -168,8 +182,8 @@ export default function SocialMediaDemo() {
             onClick={() => setView('assets')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-colors ${
               view === 'assets'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
+                ? 'bg-cyan-500 text-white'
+                : 'bg-slate-800/50 border border-white/10 text-slate-300 hover:bg-slate-800'
             }`}
           >
             <Image className="w-5 h-5" />
@@ -179,8 +193,8 @@ export default function SocialMediaDemo() {
             onClick={() => setView('generator')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-colors ${
               view === 'generator'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
+                ? 'bg-cyan-500 text-white'
+                : 'bg-slate-800/50 border border-white/10 text-slate-300 hover:bg-slate-800'
             }`}
           >
             <Sparkles className="w-5 h-5" />
@@ -190,13 +204,13 @@ export default function SocialMediaDemo() {
 
         {/* Calendar View */}
         {view === 'calendar' && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Content Calendar</h2>
+          <div className="bg-slate-900/50 border border-white/10 rounded-lg p-6">
+            <h2 className="text-2xl font-bold text-white mb-6">Content Calendar</h2>
 
             {/* Simple calendar grid */}
             <div className="grid grid-cols-7 gap-4">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="text-center font-semibold text-gray-700 p-2">
+                <div key={day} className="text-center font-semibold text-slate-400 p-2">
                   {day}
                 </div>
               ))}
@@ -208,30 +222,30 @@ export default function SocialMediaDemo() {
                 return (
                   <div
                     key={i}
-                    className={`border rounded-lg p-4 min-h-[120px] ${
-                      dayNum < 1 || dayNum > 30 ? 'bg-gray-50 text-gray-400' : 'bg-white'
+                    className={`border border-white/10 rounded-lg p-4 min-h-[120px] ${
+                      dayNum < 1 || dayNum > 30 ? 'bg-slate-800/30 text-slate-600' : 'bg-slate-800/50 hover:bg-slate-800/70 transition-colors'
                     }`}
                   >
-                    <div className="text-sm font-medium mb-2">
+                    <div className="text-sm font-medium mb-2 text-slate-300">
                       {dayNum > 0 && dayNum <= 30 ? dayNum : ''}
                     </div>
 
                     {hasPost && dayNum > 0 && dayNum <= 30 && (
                       <div className="space-y-1">
                         {dayNum === 1 && (
-                          <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                          <div className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
                             <Facebook className="w-3 h-3 inline mr-1" />
                             Spring Special
                           </div>
                         )}
                         {dayNum === 3 && (
-                          <div className="text-xs bg-pink-100 text-pink-800 px-2 py-1 rounded">
+                          <div className="text-xs bg-pink-500/20 text-pink-400 px-2 py-1 rounded">
                             <Instagram className="w-3 h-3 inline mr-1" />
                             Behind the scenes
                           </div>
                         )}
                         {dayNum === 15 && (
-                          <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                          <div className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
                             <Linkedin className="w-3 h-3 inline mr-1" />
                             Industry insight
                           </div>
@@ -247,14 +261,14 @@ export default function SocialMediaDemo() {
 
         {/* Posts View */}
         {view === 'posts' && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Scheduled Posts</h2>
+          <div className="bg-slate-900/50 border border-white/10 rounded-lg p-6">
+            <h2 className="text-2xl font-bold text-white mb-6">Scheduled Posts</h2>
 
             <div className="space-y-4">
               {posts.map(post => {
                 const PlatformIcon = platformConfig[post.platform].icon;
                 return (
-                  <div key={post.id} className="border rounded-lg p-4 flex gap-4">
+                  <div key={post.id} className="border border-white/10 rounded-lg p-4 flex gap-4 bg-slate-800/30 hover:bg-slate-800/50 transition-colors">
                     {post.image_url && (
                       <img
                         src={post.image_url}
@@ -270,17 +284,17 @@ export default function SocialMediaDemo() {
                           {platformConfig[post.platform].name}
                         </span>
                         <span className={`px-2 py-1 rounded text-xs ${
-                          post.status === 'published' ? 'bg-green-100 text-green-800' :
-                          post.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
+                          post.status === 'published' ? 'bg-green-500/20 text-green-400' :
+                          post.status === 'scheduled' ? 'bg-blue-500/20 text-blue-400' :
+                          'bg-slate-500/20 text-slate-400'
                         }`}>
                           {post.status}
                         </span>
                       </div>
 
-                      <p className="text-gray-700 mb-2">{post.content}</p>
+                      <p className="text-slate-300 mb-2">{post.content}</p>
 
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <div className="flex items-center gap-4 text-sm text-slate-400">
                         <span>
                           {post.status === 'published' ? 'Published' : 'Scheduled for'}{' '}
                           {new Date(post.scheduled_for).toLocaleDateString()}
@@ -300,7 +314,7 @@ export default function SocialMediaDemo() {
               })}
             </div>
 
-            <button className="mt-6 flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            <button className="mt-6 flex items-center gap-2 px-6 py-3 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors">
               <Plus className="w-5 h-5" />
               Create New Post
             </button>
@@ -309,10 +323,10 @@ export default function SocialMediaDemo() {
 
         {/* Assets View */}
         {view === 'assets' && (
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-slate-900/50 border border-white/10 rounded-lg p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Asset Library</h2>
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <h2 className="text-2xl font-bold text-white">Asset Library</h2>
+              <button className="flex items-center gap-2 px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors">
                 <Upload className="w-4 h-4" />
                 Upload Asset
               </button>
@@ -320,22 +334,22 @@ export default function SocialMediaDemo() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {assets.map(asset => (
-                <div key={asset.id} className="border rounded-lg p-2 hover:shadow-md transition-shadow cursor-pointer">
+                <div key={asset.id} className="border border-white/10 rounded-lg p-2 bg-slate-800/30 hover:bg-slate-800/50 transition-all cursor-pointer hover:border-cyan-500/50">
                   <img
                     src={asset.url}
                     alt={asset.name}
                     className="w-full h-32 object-cover rounded mb-2"
                   />
-                  <div className="text-sm font-medium text-gray-900 truncate">{asset.name}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-sm font-medium text-white truncate">{asset.name}</div>
+                  <div className="text-xs text-slate-400">
                     {new Date(asset.uploaded_at).toLocaleDateString()}
                   </div>
                 </div>
               ))}
 
               {/* Placeholder cards */}
-              <div className="border-2 border-dashed rounded-lg p-2 flex items-center justify-center h-40 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
-                <div className="text-center text-gray-400">
+              <div className="border-2 border-dashed border-white/20 rounded-lg p-2 flex items-center justify-center h-40 cursor-pointer hover:border-cyan-500/50 hover:bg-cyan-500/10 transition-colors">
+                <div className="text-center text-slate-400">
                   <Upload className="w-8 h-8 mx-auto mb-2" />
                   <div className="text-sm">Upload Image</div>
                 </div>
@@ -346,16 +360,16 @@ export default function SocialMediaDemo() {
 
         {/* AI Generator View */}
         {view === 'generator' && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">AI Caption Generator</h2>
+          <div className="bg-slate-900/50 border border-white/10 rounded-lg p-6">
+            <h2 className="text-2xl font-bold text-white mb-6">AI Caption Generator</h2>
 
             <div className="space-y-6">
               {/* Platform Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   Select Platforms
                 </label>
-                <div className="flex gap-3">
+                <div className="flex gap-3 flex-wrap">
                   {Object.entries(platformConfig).map(([key, config]) => {
                     const PlatformIcon = config.icon;
                     const isSelected = selectedPlatforms.includes(key);
@@ -369,10 +383,10 @@ export default function SocialMediaDemo() {
                               : [...prev, key]
                           );
                         }}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-colors ${
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
                           isSelected
                             ? `${config.bg} ${config.color} border-current`
-                            : 'border-gray-300 text-gray-600 hover:border-gray-400'
+                            : 'border-white/20 text-slate-400 hover:border-white/40 hover:text-white'
                         }`}
                       >
                         <PlatformIcon className="w-5 h-5" />
@@ -385,14 +399,14 @@ export default function SocialMediaDemo() {
 
               {/* Prompt Input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   What would you like to post about?
                 </label>
                 <textarea
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
                   placeholder="E.g., Announce our new emergency service available 24/7"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-500"
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-white/10 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-white placeholder:text-slate-500"
                   rows={4}
                 />
               </div>
@@ -401,7 +415,7 @@ export default function SocialMediaDemo() {
               <button
                 onClick={handleGenerateCaption}
                 disabled={generating || !aiPrompt.trim()}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-cyan-500 text-white rounded-lg hover:from-purple-600 hover:to-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 <Sparkles className={`w-5 h-5 ${generating ? 'animate-spin' : ''}`} />
                 {generating ? 'Generating...' : 'Generate Caption with AI'}
@@ -409,19 +423,19 @@ export default function SocialMediaDemo() {
 
               {/* Generated Caption */}
               {generatedCaption && (
-                <div className="border-2 border-blue-200 rounded-lg p-6 bg-blue-50">
+                <div className="border border-cyan-500/30 rounded-lg p-6 bg-cyan-500/10">
                   <div className="flex items-center gap-2 mb-4">
-                    <Sparkles className="w-5 h-5 text-blue-600" />
-                    <span className="font-semibold text-blue-900">AI Generated Caption</span>
+                    <Sparkles className="w-5 h-5 text-cyan-400" />
+                    <span className="font-semibold text-white">AI Generated Caption</span>
                   </div>
-                  <p className="text-gray-800 mb-4 whitespace-pre-wrap">{generatedCaption}</p>
+                  <p className="text-slate-300 mb-4 whitespace-pre-wrap">{generatedCaption}</p>
                   <div className="flex gap-3">
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <button className="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors">
                       Use This Caption
                     </button>
                     <button
                       onClick={handleGenerateCaption}
-                      className="px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                      className="px-4 py-2 bg-slate-800/50 text-cyan-400 border border-cyan-500/30 rounded-lg hover:bg-slate-800 transition-colors"
                     >
                       Generate Another
                     </button>

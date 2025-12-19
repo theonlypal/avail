@@ -11,6 +11,7 @@ import { PostCallAnalysis, type PostCallData } from "./post-call-analysis";
 
 interface ImmersiveCallScreenProps {
   lead: Lead;
+  callSid?: string; // Optional: When provided from wrapper with real Twilio call
   onCallEnd?: (callData: CallData) => void;
   onClose?: () => void;
 }
@@ -39,12 +40,12 @@ interface CopilotMessage {
   timestamp: Date;
 }
 
-export function ImmersiveCallScreen({ lead, onCallEnd, onClose }: ImmersiveCallScreenProps) {
-  const [callStatus, setCallStatus] = useState<CallStatus>("idle");
+export function ImmersiveCallScreen({ lead, callSid: providedCallSid, onCallEnd, onClose }: ImmersiveCallScreenProps) {
+  const [callStatus, setCallStatus] = useState<CallStatus>(providedCallSid ? "connected" : "idle");
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [callDuration, setCallDuration] = useState(0);
-  const [callStartTime, setCallStartTime] = useState<number | null>(null);
+  const [callStartTime, setCallStartTime] = useState<number | null>(providedCallSid ? Date.now() : null);
   const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
   const [aiTip, setAiTip] = useState<string>("");
   const [copilotMessages, setCopilotMessages] = useState<CopilotMessage[]>([]);
@@ -52,7 +53,7 @@ export function ImmersiveCallScreen({ lead, onCallEnd, onClose }: ImmersiveCallS
   const [copilotLoading, setCopilotLoading] = useState(false);
   const [showCopilot, setShowCopilot] = useState(false);
   const [showPostCallAnalysis, setShowPostCallAnalysis] = useState(false);
-  const [callSid, setCallSid] = useState<string | null>(null);
+  const [callSid, setCallSid] = useState<string | null>(providedCallSid || null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const copilotEndRef = useRef<HTMLDivElement>(null);
 
@@ -84,10 +85,14 @@ export function ImmersiveCallScreen({ lead, onCallEnd, onClose }: ImmersiveCallS
 
   // Poll for real-time transcripts (when using production Twilio)
   useEffect(() => {
+    console.log('[ImmersiveCallScreen] Polling useEffect triggered. Status:', callStatus, 'CallSid:', callSid);
+
     if (callStatus !== "connected" || !callSid) {
+      console.log('[ImmersiveCallScreen] Polling NOT starting. Status:', callStatus, 'CallSid:', callSid);
       return;
     }
 
+    console.log('[ImmersiveCallScreen] ✅ Starting transcript polling for callSid:', callSid);
     let lastTranscriptId: string | null = null;
     let pollInterval: NodeJS.Timeout;
 
@@ -97,12 +102,22 @@ export function ImmersiveCallScreen({ lead, onCallEnd, onClose }: ImmersiveCallS
           ? `/api/calls/transcripts?call_sid=${callSid}&last_id=${lastTranscriptId}`
           : `/api/calls/transcripts?call_sid=${callSid}`;
 
+        console.log('[ImmersiveCallScreen] Polling URL:', url);
         const response = await fetch(url);
-        if (!response.ok) return;
+        console.log('[ImmersiveCallScreen] Response status:', response.status, response.ok);
+
+        if (!response.ok) {
+          console.error('[ImmersiveCallScreen] API returned non-OK status:', response.status);
+          return;
+        }
 
         const data = await response.json();
+        console.log('[ImmersiveCallScreen] Received data:', JSON.stringify(data).substring(0, 200));
+
         if (data.transcripts && data.transcripts.length > 0) {
+          console.log('[ImmersiveCallScreen] 🎉 Found', data.transcripts.length, 'transcripts!');
           data.transcripts.forEach((t: any) => {
+            console.log('[ImmersiveCallScreen] Adding transcript:', t.speaker, t.text.substring(0, 50));
             addTranscriptLine(t.speaker, t.text);
             lastTranscriptId = t.id;
 
@@ -111,9 +126,11 @@ export function ImmersiveCallScreen({ lead, onCallEnd, onClose }: ImmersiveCallS
               getAISuggestion(t.text);
             }
           });
+        } else {
+          console.log('[ImmersiveCallScreen] No transcripts in response');
         }
       } catch (error) {
-        console.error('Transcript polling error:', error);
+        console.error('[ImmersiveCallScreen] Transcript polling error:', error);
       }
     };
 
@@ -122,6 +139,7 @@ export function ImmersiveCallScreen({ lead, onCallEnd, onClose }: ImmersiveCallS
     pollTranscripts(); // Initial fetch
 
     return () => {
+      console.log('[ImmersiveCallScreen] Stopping transcript polling');
       clearInterval(pollInterval);
       // Clean up transcripts when call ends
       if (callSid) {
@@ -168,13 +186,19 @@ export function ImmersiveCallScreen({ lead, onCallEnd, onClose }: ImmersiveCallS
   };
 
   const addTranscriptLine = (speaker: "user" | "lead", text: string, suggestion?: string) => {
-    setTranscript(prev => [...prev, {
-      id: Date.now().toString() + Math.random(),
-      speaker,
-      text,
-      timestamp: new Date(),
-      aiSuggestion: suggestion,
-    }]);
+    console.log('[ImmersiveCallScreen] addTranscriptLine called. Speaker:', speaker, 'Text:', text.substring(0, 50));
+    setTranscript(prev => {
+      const newEntry = {
+        id: Date.now().toString() + Math.random(),
+        speaker,
+        text,
+        timestamp: new Date(),
+        aiSuggestion: suggestion,
+      };
+      const updated = [...prev, newEntry];
+      console.log('[ImmersiveCallScreen] Transcript updated. Length:', updated.length);
+      return updated;
+    });
   };
 
   const handleCopilotMessage = async () => {

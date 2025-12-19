@@ -91,7 +91,7 @@ export async function PUT(
 
     // Validate stage if provided
     if (updates.stage) {
-      const validStages = ['new', 'contacted', 'qualified', 'demo', 'proposal', 'negotiation', 'closed_won', 'closed_lost'];
+      const validStages = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost', 'demo', 'closed_won', 'closed_lost'];
       if (!validStages.includes(updates.stage)) {
         return NextResponse.json(
           { error: `Invalid stage. Must be one of: ${validStages.join(', ')}` },

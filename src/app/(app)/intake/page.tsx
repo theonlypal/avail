@@ -18,7 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ClipboardList, CheckCircle2, Calendar, Mail, MessageSquare } from "lucide-react";
+import { ClipboardList, CheckCircle2, Calendar, Mail, MessageSquare, ExternalLink } from "lucide-react";
+import { CalendlyEmbed } from "@/components/calendar/calendly-embed";
 
 interface IntakeFormData {
   // Contact Info
@@ -101,12 +102,41 @@ function IntakeFormContent() {
     }));
   };
 
+  const [demoUrl, setDemoUrl] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      // TODO: Call CRM API to create Business + Contact + Deal
+      // Create prospect for personalized demo experience
+      const prospectResponse = await fetch('/api/prospects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company_name: formData.company,
+          contact_name: `${formData.firstName} ${formData.lastName}`,
+          contact_email: formData.email,
+          contact_phone: formData.phone,
+          industry: mapIndustryToKey(formData.industry),
+          business_type: formData.industry,
+          location: `${formData.city}, ${formData.state}`,
+          website_url: formData.website,
+          monthly_leads: formData.jobsPerMonth,
+          avg_deal_value: formData.avgTicket,
+          pain_points: formData.painPoints,
+          source: 'intake_form',
+        }),
+      });
+
+      if (prospectResponse.ok) {
+        const prospectResult = await prospectResponse.json();
+        if (prospectResult.demo_url) {
+          setDemoUrl(prospectResult.demo_url);
+        }
+      }
+
+      // Also call CRM API to create Business + Contact + Deal
       const response = await fetch('/api/crm/intake', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -114,13 +144,8 @@ function IntakeFormContent() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit intake form');
+        console.warn('CRM intake failed, but prospect created');
       }
-
-      const result = await response.json();
-
-      // TODO: Send confirmation SMS via Twilio
-      // TODO: Send confirmation email via Postmark
 
       setSubmitted(true);
       setShowCalendar(true);
@@ -131,6 +156,33 @@ function IntakeFormContent() {
       setIsSubmitting(false);
     }
   };
+
+  // Map free-form industry input to industry key
+  function mapIndustryToKey(industry: string): string {
+    const lower = industry.toLowerCase();
+    if (lower.includes('plumb') || lower.includes('hvac') || lower.includes('electric') || lower.includes('roof') || lower.includes('landscap')) {
+      return 'home-services';
+    }
+    if (lower.includes('dental') || lower.includes('chiro') || lower.includes('med spa') || lower.includes('health') || lower.includes('therapy')) {
+      return 'healthcare';
+    }
+    if (lower.includes('law') || lower.includes('account') || lower.includes('consult') || lower.includes('market')) {
+      return 'professional-services';
+    }
+    if (lower.includes('fitness') || lower.includes('gym') || lower.includes('yoga') || lower.includes('crossfit') || lower.includes('pilates')) {
+      return 'fitness';
+    }
+    if (lower.includes('real estate') || lower.includes('realtor') || lower.includes('property')) {
+      return 'real-estate';
+    }
+    if (lower.includes('restaurant') || lower.includes('food') || lower.includes('cafe') || lower.includes('bar')) {
+      return 'restaurant';
+    }
+    if (lower.includes('auto') || lower.includes('car') || lower.includes('mechanic') || lower.includes('tire')) {
+      return 'automotive';
+    }
+    return 'other';
+  }
 
   const painPointOptions = [
     'Not enough leads',
@@ -181,6 +233,28 @@ function IntakeFormContent() {
                 </div>
               </div>
 
+              {/* Personalized Demo Link */}
+              {demoUrl && (
+                <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="rounded-full bg-cyan-500/20 p-2">
+                      <ExternalLink className="h-5 w-5 text-cyan-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-white">Your Personalized Demo is Ready</p>
+                      <p className="text-sm text-slate-400">Explore AVAIL customized for {formData.company}</p>
+                    </div>
+                  </div>
+                  <a
+                    href={demoUrl}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-lg text-white font-medium hover:from-blue-700 hover:to-cyan-700 transition-all w-full justify-center"
+                  >
+                    View Your Custom Demo
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </div>
+              )}
+
               {showCalendar && (
                 <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-6 space-y-4">
                   <div className="flex items-center gap-3 mb-4">
@@ -188,17 +262,54 @@ function IntakeFormContent() {
                     <h3 className="text-xl font-semibold text-white">Book Your Call</h3>
                   </div>
 
-                  <div className="rounded-lg border border-white/20 bg-white/5 p-8 text-center">
-                    <p className="text-slate-400 mb-4">
-                      Calendar integration coming soon. Our team will reach out within 24 hours to schedule your call.
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      You can also call us directly at {process.env.NEXT_PUBLIC_BUSINESS_PHONE_NUMBER || '+1 (213) 555-0120'}
-                    </p>
-                  </div>
-
-                  {/* TODO: Embed Google Calendar availability picker */}
-                  {/* This will show available slots from the configured Google Calendar */}
+                  {process.env.NEXT_PUBLIC_CALENDLY_URL ? (
+                    <div className="rounded-xl overflow-hidden bg-white">
+                      <CalendlyEmbed
+                        url={process.env.NEXT_PUBLIC_CALENDLY_URL}
+                        prefill={{
+                          name: `${formData.firstName} ${formData.lastName}`,
+                          email: formData.email,
+                          phone: formData.phone,
+                        }}
+                        onEventScheduled={(event) => {
+                          console.log('Meeting scheduled:', event);
+                          // Optionally log to our API
+                          fetch('/api/bookings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              team_id: 'default-team',
+                              title: event.event?.name || 'Discovery Call',
+                              start_time: event.event?.start_time,
+                              end_time: event.event?.end_time,
+                              attendee_name: `${formData.firstName} ${formData.lastName}`,
+                              attendee_email: formData.email,
+                              external_id: event.invitee?.uri,
+                              status: 'scheduled',
+                            }),
+                          }).catch(console.error);
+                        }}
+                        styles={{ height: '650px' }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-white/20 bg-white/5 p-8 text-center">
+                      <p className="text-slate-300 mb-4">
+                        Our team will reach out within 24 hours to schedule your call.
+                      </p>
+                      <a
+                        href="/booking"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-lg text-white font-medium hover:from-blue-700 hover:to-cyan-700 transition-all"
+                      >
+                        <Calendar className="h-4 w-4" />
+                        Schedule Now
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                      <p className="text-sm text-slate-500 mt-4">
+                        You can also call us directly at {process.env.NEXT_PUBLIC_BUSINESS_PHONE_NUMBER || '+1 (213) 555-0120'}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 

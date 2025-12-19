@@ -44,9 +44,10 @@ interface UnifiedCallViewProps {
   callSid: string; // Twilio call SID for polling
   lead: Lead;
   onCallEnd?: (transcript: TranscriptEntry[], duration: number) => void;
+  onDisconnectCall?: () => void; // Callback to disconnect the actual Twilio Device call
 }
 
-export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCallViewProps) {
+export default function UnifiedCallView({ callSid, lead, onCallEnd, onDisconnectCall }: UnifiedCallViewProps) {
   // State
   const [isMounted, setIsMounted] = useState(false); // Track client-side mount
   const [isCallActive, setIsCallActive] = useState(false);
@@ -148,8 +149,8 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
     // Initial poll
     pollTranscripts();
 
-    // Poll every 500ms for real-time updates
-    pollIntervalRef.current = setInterval(pollTranscripts, 500);
+    // Poll every 250ms for maximum real-time performance (4x per second)
+    pollIntervalRef.current = setInterval(pollTranscripts, 250);
 
     return () => {
       if (pollIntervalRef.current) {
@@ -363,6 +364,14 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
    * End call and cleanup
    */
   const endCall = async () => {
+    console.log('[UnifiedCallView] endCall() - User clicked End Call button');
+
+    // CRITICAL: Disconnect the Twilio Device call FIRST
+    if (onDisconnectCall) {
+      console.log('[UnifiedCallView] Calling onDisconnectCall to disconnect Twilio Device');
+      onDisconnectCall();
+    }
+
     // Stop audio capture
     if (audioCapture.current) {
       audioCapture.current.stop();
@@ -387,8 +396,9 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
     // Save call record to database
     await saveCallRecord(endedAt, duration);
 
-    // Call callback
+    // Call callback to close the UI
     if (onCallEnd) {
+      console.log('[UnifiedCallView] Calling onCallEnd to close UI');
       onCallEnd(transcript, duration);
     }
 
@@ -525,7 +535,7 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
   // Prevent hydration mismatch by not rendering until client-side
   if (!isMounted) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
         <div className="text-center space-y-6 p-8">
           <div className="w-32 h-32 mx-auto bg-gradient-to-br from-blue-500/20 to-cyan-600/20 backdrop-blur-xl border border-cyan-500/30 rounded-3xl flex items-center justify-center shadow-2xl shadow-cyan-500/20 animate-pulse">
             <Phone className="h-16 w-16 text-cyan-400" />
@@ -541,7 +551,7 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
 
   if (!isCallActive) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
         <div className="text-center space-y-6 p-8">
           <div className="w-32 h-32 mx-auto bg-gradient-to-br from-emerald-500/20 to-green-600/20 backdrop-blur-xl border border-emerald-500/30 rounded-3xl flex items-center justify-center shadow-2xl shadow-emerald-500/20">
             <Phone className="w-16 h-16 text-emerald-400" />
@@ -557,7 +567,7 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Header */}
       <div className="p-6 border-b border-white/10 bg-white/5 backdrop-blur-xl">
         <div className="flex items-center justify-between">
@@ -617,24 +627,24 @@ export default function UnifiedCallView({ callSid, lead, onCallEnd }: UnifiedCal
                 <Sparkles className="w-5 h-5 text-cyan-400" />
                 Unified Live Transcript
               </h2>
-              <p className="text-xs text-slate-400 mt-1 flex items-center gap-2">
+              <div className="text-xs text-slate-400 mt-1 flex items-center gap-2">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan-500/10 border border-cyan-500/30 rounded-md">
-                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 block" />
                   You (Mic)
                 </span>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan-400/10 border border-cyan-400/30 rounded-md">
-                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-300" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 block" />
                   You (Call)
                 </span>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-500/10 border border-purple-500/30 rounded-md">
-                  <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400 block" />
                   Lead
                 </span>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded-md">
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 block" />
                   AI Coach
                 </span>
-              </p>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <button

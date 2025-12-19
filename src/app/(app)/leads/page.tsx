@@ -1,5 +1,5 @@
 /**
- * Leadly.AI Dashboard - Modern Professional Edition
+ * AVAIL Dashboard - Modern Professional Edition
  *
  * Primary focus: Clean interface with integrated AI Copilot
  * Natural language queries to find and populate leads
@@ -196,7 +196,7 @@ export default function LeadsPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white">
-                  Leadly.AI
+                  AVAIL
                 </h1>
                 <p className="text-sm text-slate-400">
                   AI-Powered Lead Intelligence
