@@ -65,6 +65,7 @@ export function Sidebar() {
   }, [mobileMenuOpen]);
 
   return (
+    <>
     <header
       className={cn(
         'fixed top-0 left-0 right-0 z-50 w-full text-white transition-all duration-500 ease-out',
@@ -184,91 +185,93 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Mobile Navigation Overlay */}
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-          aria-hidden="true"
-        />
-      )}
+    </header>
 
-      {/* Mobile Navigation Drawer */}
+    {/* Mobile Navigation Overlay - Outside header for proper positioning */}
+    {mobileMenuOpen && (
       <div
-        className={cn(
-          'fixed top-0 right-0 bottom-0 z-50 w-[280px] max-w-[85vw] bg-slate-950 border-l border-white/10 lg:hidden transform transition-transform duration-300 ease-out',
-          mobileMenuOpen ? 'translate-x-0' : 'translate-x-full',
-        )}
-      >
-        {/* Mobile Menu Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <span className="font-bold text-xl bg-gradient-to-r from-cyan-400 via-white to-slate-300 bg-clip-text text-transparent">
-            AVAIL
-          </span>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => setMobileMenuOpen(false)}
-            className="h-8 w-8 text-slate-400 hover:bg-white/10 hover:text-white"
-            aria-label="Close menu"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-            </svg>
-          </Button>
-        </div>
+        className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm lg:hidden"
+        onClick={() => setMobileMenuOpen(false)}
+        aria-hidden="true"
+      />
+    )}
 
-        {/* Mobile Menu Content */}
-        <div className="flex flex-col h-[calc(100%-65px)] overflow-y-auto">
-          <nav className="flex-1 p-4">
-            <div className="space-y-1">
-              {routes.map((route) => {
-                const active =
-                  route.href.includes('#')
-                    ? false
-                    : route.href === '/'
-                      ? pathname === '/'
-                      : pathname === route.href || pathname.startsWith(route.href + '/');
-                const isHighlight = 'highlight' in route && route.highlight;
-                return (
-                  <Link
-                    key={route.href}
-                    href={route.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-4 py-3 text-[15px] font-medium transition-colors",
-                      active
-                        ? "bg-cyan-500/15 text-cyan-400"
-                        : isHighlight
-                          ? "bg-emerald-500/15 text-emerald-400"
-                          : "text-slate-300 hover:bg-white/5 hover:text-white"
-                    )}
-                  >
-                    <route.icon className="h-5 w-5 flex-shrink-0" />
-                    <span>{route.label}</span>
-                    {isHighlight && !active && (
-                      <Sparkles className="h-4 w-4 text-emerald-400 ml-auto flex-shrink-0" />
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </nav>
+    {/* Mobile Navigation Drawer - Outside header for full viewport height */}
+    <div
+      className={cn(
+        'fixed top-0 right-0 z-[70] w-[280px] max-w-[85vw] h-screen bg-slate-950 border-l border-white/10 lg:hidden transform transition-transform duration-300 ease-out',
+        mobileMenuOpen ? 'translate-x-0' : 'translate-x-full',
+      )}
+    >
+      {/* Mobile Menu Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+        <span className="font-bold text-xl bg-gradient-to-r from-cyan-400 via-white to-slate-300 bg-clip-text text-transparent">
+          AVAIL
+        </span>
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() => setMobileMenuOpen(false)}
+          className="h-8 w-8 text-slate-400 hover:bg-white/10 hover:text-white"
+          aria-label="Close menu"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+          </svg>
+        </Button>
+      </div>
 
-          {/* Mobile Menu Footer */}
-          <div className="p-4 border-t border-white/10">
-            <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="block">
-              <ButtonShiny variant="cyan" className="w-full h-11">
-                <span className="flex items-center justify-center gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  Get Started
-                  <ArrowRight className="h-4 w-4" />
-                </span>
-              </ButtonShiny>
-            </Link>
+      {/* Mobile Menu Content */}
+      <div className="flex flex-col h-[calc(100vh-65px)] overflow-y-auto">
+        <nav className="flex-1 p-4">
+          <div className="space-y-1">
+            {routes.map((route) => {
+              const active =
+                route.href.includes('#')
+                  ? false
+                  : route.href === '/'
+                    ? pathname === '/'
+                    : pathname === route.href || pathname.startsWith(route.href + '/');
+              const isHighlight = 'highlight' in route && route.highlight;
+              return (
+                <Link
+                  key={route.href}
+                  href={route.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-4 py-3 text-[15px] font-medium transition-colors",
+                    active
+                      ? "bg-cyan-500/15 text-cyan-400"
+                      : isHighlight
+                        ? "bg-emerald-500/15 text-emerald-400"
+                        : "text-slate-300 hover:bg-white/5 hover:text-white"
+                  )}
+                >
+                  <route.icon className="h-5 w-5 flex-shrink-0" />
+                  <span>{route.label}</span>
+                  {isHighlight && !active && (
+                    <Sparkles className="h-4 w-4 text-emerald-400 ml-auto flex-shrink-0" />
+                  )}
+                </Link>
+              );
+            })}
           </div>
+        </nav>
+
+        {/* Mobile Menu Footer */}
+        <div className="p-4 border-t border-white/10">
+          <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="block">
+            <ButtonShiny variant="cyan" className="w-full h-11">
+              <span className="flex items-center justify-center gap-2">
+                <Sparkles className="h-4 w-4" />
+                Get Started
+                <ArrowRight className="h-4 w-4" />
+              </span>
+            </ButtonShiny>
+          </Link>
         </div>
       </div>
-    </header>
+    </div>
+    </>
   );
 }
