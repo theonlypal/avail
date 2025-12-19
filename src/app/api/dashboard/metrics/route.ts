@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import path from 'path';
 import fs from 'fs';
 
@@ -21,10 +21,17 @@ if (!IS_PRODUCTION) {
   try { Database = require('better-sqlite3'); } catch { /* expected in production */ }
 }
 
-// Neon SQL client for production
-const sql: NeonQueryFunction<false, false> | null = IS_PRODUCTION && process.env.POSTGRES_URL
-  ? neon(process.env.POSTGRES_URL)
-  : null;
+// PostgreSQL Pool for production (Railway)
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+let pgPool: Pool | null = null;
+if (IS_PRODUCTION && postgresUrl) {
+  pgPool = new Pool({
+    connectionString: postgresUrl,
+    ssl: false,
+    max: 5,
+    idleTimeoutMillis: 30000,
+  });
+}
 
 // SQLite setup (local development)
 const DB_PATH = path.join(process.cwd(), 'data', 'leadly.db');
@@ -51,7 +58,7 @@ export async function GET(request: NextRequest) {
   try {
     let metrics;
 
-    if (IS_PRODUCTION && sql) {
+    if (IS_PRODUCTION && pgPool) {
       metrics = await getProductionMetrics(teamId);
     } else {
       metrics = getLocalMetrics(teamId);
@@ -68,8 +75,10 @@ export async function GET(request: NextRequest) {
 }
 
 async function getProductionMetrics(teamId: string) {
+  if (!pgPool) throw new Error('Database not available');
+
   // Lead metrics
-  const leadsResult = await sql!`
+  const leadsResult = await pgPool.query(`
     SELECT
       COUNT(*) as total_leads,
       COALESCE(AVG(opportunity_score), 0) as avg_score,
@@ -77,21 +86,21 @@ async function getProductionMetrics(teamId: string) {
       COUNT(CASE WHEN created_at >= NOW() - INTERVAL '7 days' THEN 1 END) as leads_this_week,
       COUNT(CASE WHEN created_at >= NOW() - INTERVAL '30 days' THEN 1 END) as leads_this_month
     FROM leads
-    WHERE team_id = ${teamId}
-  `;
+    WHERE team_id = $1
+  `, [teamId]);
 
   // Industry breakdown
-  const industriesResult = await sql!`
+  const industriesResult = await pgPool.query(`
     SELECT industry, COUNT(*) as count
     FROM leads
-    WHERE team_id = ${teamId} AND industry IS NOT NULL
+    WHERE team_id = $1 AND industry IS NOT NULL
     GROUP BY industry
     ORDER BY count DESC
     LIMIT 10
-  `;
+  `, [teamId]);
 
   // Deal metrics
-  const dealsResult = await sql!`
+  const dealsResult = await pgPool.query(`
     SELECT
       COUNT(*) as total_deals,
       COALESCE(SUM(value), 0) as total_value,
@@ -99,44 +108,44 @@ async function getProductionMetrics(teamId: string) {
       COALESCE(SUM(CASE WHEN stage = 'won' THEN value ELSE 0 END), 0) as won_value,
       COUNT(CASE WHEN created_at >= NOW() - INTERVAL '30 days' THEN 1 END) as deals_this_month
     FROM deals
-  `;
+  `);
 
   // Deal stages breakdown
-  const stagesResult = await sql!`
+  const stagesResult = await pgPool.query(`
     SELECT stage, COUNT(*) as count, COALESCE(SUM(value), 0) as value
     FROM deals
     GROUP BY stage
     ORDER BY count DESC
-  `;
+  `);
 
   // Contact metrics
-  const contactsResult = await sql!`
+  const contactsResult = await pgPool.query(`
     SELECT
       COUNT(*) as total_contacts,
       COUNT(CASE WHEN created_at >= NOW() - INTERVAL '7 days' THEN 1 END) as contacts_this_week,
       COUNT(CASE WHEN created_at >= NOW() - INTERVAL '30 days' THEN 1 END) as contacts_this_month
     FROM contacts
-  `;
+  `);
 
   // Message metrics
-  const messagesResult = await sql!`
+  const messagesResult = await pgPool.query(`
     SELECT
       COUNT(*) as total_messages,
       COUNT(CASE WHEN direction = 'outbound' THEN 1 END) as sent_messages,
       COUNT(CASE WHEN direction = 'inbound' THEN 1 END) as received_messages,
       COUNT(CASE WHEN created_at >= NOW() - INTERVAL '7 days' THEN 1 END) as messages_this_week
     FROM messages
-  `;
+  `);
 
   // Appointment metrics
-  const appointmentsResult = await sql!`
+  const appointmentsResult = await pgPool.query(`
     SELECT
       COUNT(*) as total_appointments,
       COUNT(CASE WHEN status = 'scheduled' AND start_time > NOW() THEN 1 END) as upcoming_appointments,
       COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_appointments,
       COUNT(CASE WHEN created_at >= NOW() - INTERVAL '7 days' THEN 1 END) as appointments_this_week
     FROM appointments
-  `;
+  `);
 
   // Automation metrics from automation DB
   let automationMetrics = {
@@ -147,17 +156,17 @@ async function getProductionMetrics(teamId: string) {
 
   try {
     // Try to get automation stats if table exists
-    const automationResult = await sql!`
+    const automationResult = await pgPool.query(`
       SELECT
         COUNT(CASE WHEN is_active = true THEN 1 END) as active_rules,
         COALESCE(SUM(run_count), 0) as total_executions
       FROM automation_rules
-      WHERE team_id = ${teamId}
-    `;
-    if (automationResult.length > 0) {
+      WHERE team_id = $1
+    `, [teamId]);
+    if (automationResult.rows.length > 0) {
       automationMetrics = {
-        active_rules: Number(automationResult[0].active_rules) || 0,
-        total_executions: Number(automationResult[0].total_executions) || 0,
+        active_rules: Number(automationResult.rows[0].active_rules) || 0,
+        total_executions: Number(automationResult.rows[0].total_executions) || 0,
         executions_this_week: 0
       };
     }
@@ -167,44 +176,44 @@ async function getProductionMetrics(teamId: string) {
 
   return {
     leads: {
-      total: Number(leadsResult[0]?.total_leads) || 0,
-      avgScore: Math.round(Number(leadsResult[0]?.avg_score) || 0),
-      highValue: Number(leadsResult[0]?.high_value_leads) || 0,
-      thisWeek: Number(leadsResult[0]?.leads_this_week) || 0,
-      thisMonth: Number(leadsResult[0]?.leads_this_month) || 0,
+      total: Number(leadsResult.rows[0]?.total_leads) || 0,
+      avgScore: Math.round(Number(leadsResult.rows[0]?.avg_score) || 0),
+      highValue: Number(leadsResult.rows[0]?.high_value_leads) || 0,
+      thisWeek: Number(leadsResult.rows[0]?.leads_this_week) || 0,
+      thisMonth: Number(leadsResult.rows[0]?.leads_this_month) || 0,
     },
-    industries: industriesResult.map((r: any) => ({
+    industries: industriesResult.rows.map((r: any) => ({
       name: r.industry,
       count: Number(r.count),
     })),
     deals: {
-      total: Number(dealsResult[0]?.total_deals) || 0,
-      totalValue: Number(dealsResult[0]?.total_value) || 0,
-      won: Number(dealsResult[0]?.won_deals) || 0,
-      wonValue: Number(dealsResult[0]?.won_value) || 0,
-      thisMonth: Number(dealsResult[0]?.deals_this_month) || 0,
+      total: Number(dealsResult.rows[0]?.total_deals) || 0,
+      totalValue: Number(dealsResult.rows[0]?.total_value) || 0,
+      won: Number(dealsResult.rows[0]?.won_deals) || 0,
+      wonValue: Number(dealsResult.rows[0]?.won_value) || 0,
+      thisMonth: Number(dealsResult.rows[0]?.deals_this_month) || 0,
     },
-    stages: stagesResult.map((r: any) => ({
+    stages: stagesResult.rows.map((r: any) => ({
       name: r.stage,
       count: Number(r.count),
       value: Number(r.value),
     })),
     contacts: {
-      total: Number(contactsResult[0]?.total_contacts) || 0,
-      thisWeek: Number(contactsResult[0]?.contacts_this_week) || 0,
-      thisMonth: Number(contactsResult[0]?.contacts_this_month) || 0,
+      total: Number(contactsResult.rows[0]?.total_contacts) || 0,
+      thisWeek: Number(contactsResult.rows[0]?.contacts_this_week) || 0,
+      thisMonth: Number(contactsResult.rows[0]?.contacts_this_month) || 0,
     },
     messages: {
-      total: Number(messagesResult[0]?.total_messages) || 0,
-      sent: Number(messagesResult[0]?.sent_messages) || 0,
-      received: Number(messagesResult[0]?.received_messages) || 0,
-      thisWeek: Number(messagesResult[0]?.messages_this_week) || 0,
+      total: Number(messagesResult.rows[0]?.total_messages) || 0,
+      sent: Number(messagesResult.rows[0]?.sent_messages) || 0,
+      received: Number(messagesResult.rows[0]?.received_messages) || 0,
+      thisWeek: Number(messagesResult.rows[0]?.messages_this_week) || 0,
     },
     appointments: {
-      total: Number(appointmentsResult[0]?.total_appointments) || 0,
-      upcoming: Number(appointmentsResult[0]?.upcoming_appointments) || 0,
-      completed: Number(appointmentsResult[0]?.completed_appointments) || 0,
-      thisWeek: Number(appointmentsResult[0]?.appointments_this_week) || 0,
+      total: Number(appointmentsResult.rows[0]?.total_appointments) || 0,
+      upcoming: Number(appointmentsResult.rows[0]?.upcoming_appointments) || 0,
+      completed: Number(appointmentsResult.rows[0]?.completed_appointments) || 0,
+      thisWeek: Number(appointmentsResult.rows[0]?.appointments_this_week) || 0,
     },
     automations: automationMetrics,
   };
