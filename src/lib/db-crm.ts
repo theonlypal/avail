@@ -24,7 +24,7 @@ if (!IS_PRODUCTION) {
 }
 
 // PostgreSQL Pool for production (Railway)
-const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+const postgresUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 let pgPool: Pool | null = null;
 if (IS_PRODUCTION && postgresUrl) {
   pgPool = new Pool({

@@ -13,7 +13,7 @@ import { Pool } from 'pg';
 import path from 'path';
 
 const IS_PRODUCTION = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
-const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+const postgresUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 let pgPool: Pool | null = null;
 if (IS_PRODUCTION && postgresUrl) {
   pgPool = new Pool({

@@ -19,7 +19,7 @@ export async function GET() {
       }, { status: 400 });
     }
 
-    const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+    const postgresUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
     if (!postgresUrl) {
       return NextResponse.json({
         error: 'No database URL configured',
