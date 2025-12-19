@@ -184,55 +184,81 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Mobile Navigation */}
+      {/* Mobile Navigation Overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mobile Navigation Drawer */}
       <div
         className={cn(
-          'fixed top-[57px] right-0 bottom-0 left-0 z-50 flex flex-col overflow-hidden border-t border-white/[0.06] bg-slate-950/98 backdrop-blur-xl lg:hidden transition-all duration-300',
-          mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none',
+          'fixed top-0 right-0 bottom-0 z-50 w-[280px] max-w-[85vw] bg-slate-950 border-l border-white/10 lg:hidden transform transition-transform duration-300 ease-out',
+          mobileMenuOpen ? 'translate-x-0' : 'translate-x-full',
         )}
       >
-        <div
-          data-slot={mobileMenuOpen ? 'open' : 'closed'}
-          className={cn(
-            'data-[slot=open]:animate-in data-[slot=open]:fade-in-0 data-[slot=open]:zoom-in-95',
-            'data-[slot=closed]:animate-out data-[slot=closed]:fade-out-0 data-[slot=closed]:zoom-out-95',
-            'ease-out flex h-full w-full flex-col justify-between gap-y-2 p-4',
-          )}
-        >
-          <div className="grid gap-y-2">
-            {routes.map((route) => {
-              const active =
-                route.href.includes('#')
-                  ? false
-                  : route.href === '/'
-                    ? pathname === '/'
-                    : pathname === route.href || pathname.startsWith(route.href + '/');
-              const isHighlight = 'highlight' in route && route.highlight;
-              return (
-                <Link
-                  key={route.href}
-                  href={route.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium transition-all duration-300",
-                    active
-                      ? "bg-gradient-to-r from-cyan-500/10 to-blue-500/10 text-cyan-400 border border-cyan-500/20"
-                      : isHighlight
-                        ? "bg-gradient-to-r from-emerald-500/10 to-green-500/10 text-emerald-400 border border-emerald-500/20"
-                        : "text-slate-300 hover:bg-white/5 hover:text-white border border-transparent"
-                  )}
-                >
-                  <route.icon className={cn("h-5 w-5", isHighlight && !active && "text-emerald-400")} />
-                  {route.label}
-                  {isHighlight && !active && (
-                    <Sparkles className="h-4 w-4 text-emerald-400 ml-auto" />
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-          <div className="flex flex-col gap-2 pt-4 border-t border-white/[0.06]">
-            <Link href="/dashboard" className="block">
-              <ButtonShiny variant="cyan" className="w-full">
+        {/* Mobile Menu Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+          <span className="font-bold text-xl bg-gradient-to-r from-cyan-400 via-white to-slate-300 bg-clip-text text-transparent">
+            AVAIL
+          </span>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => setMobileMenuOpen(false)}
+            className="h-8 w-8 text-slate-400 hover:bg-white/10 hover:text-white"
+            aria-label="Close menu"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+            </svg>
+          </Button>
+        </div>
+
+        {/* Mobile Menu Content */}
+        <div className="flex flex-col h-[calc(100%-65px)] overflow-y-auto">
+          <nav className="flex-1 p-4">
+            <div className="space-y-1">
+              {routes.map((route) => {
+                const active =
+                  route.href.includes('#')
+                    ? false
+                    : route.href === '/'
+                      ? pathname === '/'
+                      : pathname === route.href || pathname.startsWith(route.href + '/');
+                const isHighlight = 'highlight' in route && route.highlight;
+                return (
+                  <Link
+                    key={route.href}
+                    href={route.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-4 py-3 text-[15px] font-medium transition-colors",
+                      active
+                        ? "bg-cyan-500/15 text-cyan-400"
+                        : isHighlight
+                          ? "bg-emerald-500/15 text-emerald-400"
+                          : "text-slate-300 hover:bg-white/5 hover:text-white"
+                    )}
+                  >
+                    <route.icon className="h-5 w-5 flex-shrink-0" />
+                    <span>{route.label}</span>
+                    {isHighlight && !active && (
+                      <Sparkles className="h-4 w-4 text-emerald-400 ml-auto flex-shrink-0" />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+
+          {/* Mobile Menu Footer */}
+          <div className="p-4 border-t border-white/10">
+            <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="block">
+              <ButtonShiny variant="cyan" className="w-full h-11">
                 <span className="flex items-center justify-center gap-2">
                   <Sparkles className="h-4 w-4" />
                   Get Started
